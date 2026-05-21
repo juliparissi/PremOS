@@ -144,6 +144,7 @@ export default function RootLayout({
             className={`
               flex-1
               overflow-y-auto
+              overflow-x-hidden
               ${
                 esLogin
                   ? "p-0"

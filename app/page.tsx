@@ -23,7 +23,15 @@ export default function HomePage() {
 
     } else {
 
-      window.location.href = "/resumen";
+      if (window.innerWidth < 768) {
+
+  window.location.href = "/asistente";
+
+} else {
+
+  window.location.href = "/resumen";
+
+}
 
     }
 
@@ -36,10 +44,10 @@ export default function HomePage() {
       <div className="fixed inset-0 overflow-hidden">
 
         {/* Glow verde */}
-        <div className="absolute w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-3xl top-[-200px] left-[-150px] animate-pulse" />
+<div className="absolute w-[700px] h-[700px] bg-emerald-500/60 rounded-full blur-[200px] top-[-300px] left-[-200px] animate-pulse" />
 
-        {/* Glow cyan */}
-        <div className="absolute w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-3xl bottom-[-180px] right-[-120px] animate-pulse" />
+{/* Glow cyan */}
+<div className="absolute w-[650px] h-[650px] bg-cyan-500/55 rounded-full blur-[200px] bottom-[-270px] right-[-180px] animate-pulse" />
 
         {/* Grid */}
         <div className="absolute inset-0">
