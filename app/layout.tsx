@@ -6,6 +6,16 @@ import { usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { useEffect } from "react";
 
+export const metadata = {
+  title: "PremOS",
+  description: "Sistema operativo para premoldeados",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "PremOS",
+  },
+};
+
 export default function RootLayout({
   children,
 }: {
