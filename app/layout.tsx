@@ -51,29 +51,34 @@ export default function RootLayout({
 
       <head>
 
-        <title>PremOS</title>
+  <title>PremOS</title>
 
-        <meta
-          name="description"
-          content="Sistema operativo para premoldeados"
-        />
+  <meta
+    name="description"
+    content="Sistema operativo para premoldeados"
+  />
 
-        <meta
-          name="apple-mobile-web-app-capable"
-          content="yes"
-        />
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  />
 
-        <meta
-          name="apple-mobile-web-app-status-bar-style"
-          content="black-translucent"
-        />
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="black-translucent"
+  />
 
-        <meta
-          name="apple-mobile-web-app-title"
-          content="PremOS"
-        />
+  <meta
+    name="apple-mobile-web-app-title"
+    content="PremOS"
+  />
 
-      </head>
+  <link
+    rel="apple-touch-icon"
+    href="/apple-icon.png"
+  />
+
+</head>
 
       <body className="bg-[#07111f] text-white">
 
