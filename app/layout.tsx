@@ -18,60 +18,64 @@ export default function RootLayout({
 
   useEffect(() => {
 
-  async function verificarSesion() {
+    async function verificarSesion() {
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    if (!session && pathname !== "/") {
+      if (!session && pathname !== "/") {
 
-      window.location.href = "/";
+        window.location.href = "/";
+
+      }
 
     }
 
-  }
+    verificarSesion();
 
-  verificarSesion();
-
-}, [pathname]);
+  }, [pathname]);
 
   async function cerrarSesion() {
 
-  await supabase.auth.signOut();
+    await supabase.auth.signOut();
 
-  window.location.href = "/";
+    window.location.href = "/";
 
-}
+  }
 
   return (
+
     <html lang="es">
 
       <body className="bg-[#07111f] text-white">
 
         <main className="flex h-screen overflow-hidden">
 
-          {/* Sidebar */}
+          {/* Sidebar desktop */}
           {!esLogin && (
 
-            <aside className="w-52 bg-[#081220] border-r border-white/5 p-6 flex flex-col">
+            <aside className="hidden md:flex w-52 bg-[#081220] border-r border-white/5 p-6 flex-col">
 
-              <div className="mb-10">
+              {/* Logo */}
+              <div className="mb-5">
 
                 <h1 className="text-3xl font-bold text-emerald-400">
                   PremOS
                 </h1>
 
-                <button
-  onClick={cerrarSesion}
-  className="mt-auto bg-red-500/20 hover:bg-red-500/30 text-red-400 transition px-4 py-1 rounded-xl border border-red-500/20 text-sm"
->
-  Cerrar sesión
-</button>
-
               </div>
 
-              <nav className="flex flex-col gap-3 text-zinc-300 -mt-4">
+{/* Logout */}
+              <button
+                onClick={cerrarSesion}
+                className="mt-auto bg-red-250/10 hover:bg-red-500/30 text-red-400 transition px-4 py-1 rounded-xl border border-red-500/20 text-sm"
+              >
+                Cerrar sesión
+              </button>
+
+              {/* Navegación */}
+              <nav className="flex flex-col gap-3 text-zinc-300 mt-1">
 
                 <Link
                   href="/asistente"
@@ -131,13 +135,22 @@ export default function RootLayout({
 
               </nav>
 
-
             </aside>
 
           )}
 
           {/* Contenido */}
-          <section className="flex-1 overflow-y-auto px-8 py-6">
+          <section
+            className={`
+              flex-1
+              overflow-y-auto
+              ${
+                esLogin
+                  ? "p-0"
+                  : "px-4 py-4 md:px-8 md:py-6"
+              }
+            `}
+          >
 
             {children}
 
@@ -148,5 +161,7 @@ export default function RootLayout({
       </body>
 
     </html>
+
   );
+
 }

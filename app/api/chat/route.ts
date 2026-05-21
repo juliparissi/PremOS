@@ -24,7 +24,154 @@ export async function POST(req: Request) {
 
     const mensaje = body.mensaje;
 
-    /* Contexto */
+    const mensajeLower =
+      mensaje.toLowerCase();
+
+    /* =========================
+       IA REAL - CREAR CLIENTE
+    ========================== */
+
+    if (
+      mensajeLower.includes("crear cliente") ||
+      mensajeLower.includes("crea cliente") ||
+      mensajeLower.includes("nuevo cliente")
+    ) {
+
+      const nombre = mensaje
+        .replace(/crear cliente/gi, "")
+        .replace(/crea cliente/gi, "")
+        .replace(/nuevo cliente/gi, "")
+        .trim();
+
+      if (!nombre) {
+
+        return Response.json({
+          respuesta:
+            "Decime el nombre del cliente 😎",
+        });
+
+      }
+
+      /* Verificar si existe */
+      const {
+        data: clienteExistente,
+      } = await supabase
+        .from("clientes")
+        .select("*")
+        .ilike("nombre", nombre)
+        .single();
+
+      if (clienteExistente) {
+
+        return Response.json({
+          respuesta:
+            `El cliente ${nombre} ya existe 😎`,
+        });
+
+      }
+
+      /* Crear cliente */
+      const { error } =
+        await supabase
+          .from("clientes")
+          .insert([
+            {
+              nombre,
+            },
+          ]);
+
+      if (error) {
+
+        console.error(error);
+
+        return Response.json({
+          respuesta:
+            "Error creando cliente 😅",
+        });
+
+      }
+
+      return Response.json({
+        respuesta:
+          `Cliente ${nombre} creado correctamente 😎🔥`,
+      });
+
+    }
+
+/* =========================
+   IA REAL - BORRAR CLIENTE
+========================== */
+
+if (
+  mensajeLower.includes("borrar cliente") ||
+  mensajeLower.includes("eliminar cliente") ||
+  mensajeLower.includes("borra cliente") ||
+  mensajeLower.includes("me borras el cliente")
+) {
+
+  const nombre = mensaje
+    .replace(/borrar cliente/gi, "")
+    .replace(/eliminar cliente/gi, "")
+    .replace(/borra cliente/gi, "")
+    .replace(/me borras el cliente/gi, "")
+    .trim();
+
+  if (!nombre) {
+
+    return Response.json({
+      respuesta:
+        "Decime qué cliente querés borrar 😎",
+    });
+
+  }
+
+  /* Buscar cliente */
+  const {
+    data: clienteExistente,
+  } = await supabase
+    .from("clientes")
+    .select("*")
+    .ilike("nombre", nombre)
+    .single();
+
+  if (!clienteExistente) {
+
+    return Response.json({
+      respuesta:
+        `No encontré el cliente ${nombre} 😅`,
+    });
+
+  }
+
+  /* Borrar cliente */
+  const { error } =
+    await supabase
+      .from("clientes")
+      .delete()
+      .ilike("nombre", nombre);
+
+  if (error) {
+
+    console.error(error);
+
+    return Response.json({
+      respuesta:
+        "Error borrando cliente 😅",
+    });
+
+  }
+
+  return Response.json({
+    respuesta:
+      `Cliente ${nombre} borrado correctamente 😎🔥`,
+  });
+
+}
+
+    /* =========================
+       CONTEXTO NEGOCIO
+    ========================== */
+
     const contextoPath = path.join(
       process.cwd(),
       "lib/ia/contexto-negocio.md"
@@ -36,25 +183,37 @@ export async function POST(req: Request) {
         "utf-8"
       );
 
-    /* Clientes */
+    /* =========================
+       CLIENTES
+    ========================== */
+
     const { data: clientes } =
       await supabase
         .from("clientes")
         .select("*");
 
-    /* Pedidos */
+    /* =========================
+       PEDIDOS
+    ========================== */
+
     const { data: pedidos } =
       await supabase
         .from("pedidos")
         .select("*");
 
-    /* Economía */
+    /* =========================
+       ECONOMÍA
+    ========================== */
+
     const { data: economia } =
       await supabase
         .from("movimientos_economia")
         .select("*");
 
-    /* OpenAI */
+    /* =========================
+       OPENAI
+    ========================== */
+
     const respuesta =
       await openai.chat.completions.create({
 

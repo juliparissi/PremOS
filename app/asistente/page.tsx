@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 
 type Mensaje = {
   tipo: "usuario" | "ia";
@@ -18,6 +22,17 @@ export default function HomePage() {
         "Hola 👋 Soy el Asistente PremOS. Preguntame sobre pedidos, producción, economía o clientes.",
     },
   ]);
+
+  const mensajesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+
+  mensajesRef.current?.scrollTo({
+    top: mensajesRef.current.scrollHeight,
+    behavior: "smooth",
+  });
+
+}, [mensajes]);
 
   async function enviarMensaje() {
 
@@ -79,28 +94,29 @@ export default function HomePage() {
   }
 
   return (
-    <div>
+
+    <div className="w-full h-full flex flex-col overflow-hidden">
 
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-2 md:mb-6 shrink-0">
 
-        <h1 className="text-3xl font-bold mb-2">
+        <h1 className="text-2xl md:text-3xl font-bold mb-1 text-white">
           Asistente PremOS
         </h1>
 
-        <p className="text-zinc-500 text-sm">
+        <p className="text-zinc-400 text-sm">
           Consultá información del sistema en tiempo real.
         </p>
 
       </div>
 
       {/* Chat */}
-      <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-4">
+      <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-2 pb-8 md:p-4 flex flex-col flex-1 overflow-hidden h-full min-h-0">
 
         {/* Header */}
-        <div className="mb-4">
+        <div className="mb-2 md:mb-4 shrink-0">
 
-          <h2 className="text-xl font-semibold">
+          <h2 className="text-lg md:text-xl font-semibold text-emerald-400">
             Chat PremOS IA
           </h2>
 
@@ -111,26 +127,32 @@ export default function HomePage() {
         </div>
 
         {/* Mensajes */}
-        <div className="space-y-3 mb-5 max-h-[350px] overflow-y-auto pr-2">
+        <div
+  ref={mensajesRef}
+  className="flex-1 overflow-y-auto min-h-0 space-y-3 pr-1 md:pr-2 mb-3"
+>
 
           {mensajes.map((msg, index) => (
 
             <div
               key={index}
-              className={`max-w-3xl p-3 rounded-2xl ${
+              className={`max-w-[92%] md:max-w-3xl p-3 rounded-2xl text-sm break-words ${
                 msg.tipo === "ia"
                   ? "bg-[#07111f] border border-white/5"
-                  : "bg-emerald-500 text-black ml-auto"
+                  : "bg-emerald-500 text-[#07111f] ml-auto"
               }`}
             >
 
               {msg.tipo === "ia" && (
-                <p className="text-emerald-400 text-xs mb-2">
+                <p className="text-emerald-400 text-xs mb-2 font-medium">
                   PremOS IA
                 </p>
               )}
 
-              <p className="text-sm">
+              <p className={msg.tipo === "ia"
+                ? "text-white"
+                : "text-[#07111f]"
+              }>
                 {msg.contenido}
               </p>
 
@@ -141,26 +163,30 @@ export default function HomePage() {
         </div>
 
         {/* Input */}
-        <div className="flex gap-3 mt-70">
+        <div className="flex gap-2 md:gap-3 shrink-0">
 
-          <input
-            type="text"
-            placeholder="Preguntale algo a PremOS..."
-            value={mensaje}
-            onChange={(e) => setMensaje(e.target.value)}
-            onKeyDown={(e) => {
+          <textarea
+  placeholder="Preguntale algo a PremOS..."
+  value={mensaje}
+  onChange={(e) => setMensaje(e.target.value)}
+  onKeyDown={(e) => {
 
-              if (e.key === "Enter") {
-                enviarMensaje();
-              }
+    if (e.key === "Enter" && !e.shiftKey) {
 
-            }}
-            className="flex-1 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-2 outline-none text-sm"
-          />
+      e.preventDefault();
+
+      enviarMensaje();
+
+    }
+
+  }}
+  rows={1}
+  className="flex-1 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-sm text-white placeholder:text-zinc-500 resize-none"
+ />
 
           <button
             onClick={enviarMensaje}
-            className="bg-emerald-500 hover:bg-emerald-400 transition px-5 rounded-2xl font-medium text-black text-sm"
+            className="bg-emerald-500 hover:bg-emerald-400 transition px-4 md:px-5 rounded-2xl font-medium text-[#07111f] text-sm shrink-0"
           >
             Enviar
           </button>
@@ -170,5 +196,7 @@ export default function HomePage() {
       </div>
 
     </div>
+
   );
+
 }
