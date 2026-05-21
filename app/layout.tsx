@@ -3,18 +3,9 @@
 import "./globals.css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { supabase } from "../lib/supabase";
 import { useEffect } from "react";
 
-export const metadata = {
-  title: "PremOS",
-  description: "Sistema operativo para premoldeados",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "PremOS",
-  },
-};
+import { supabase } from "../lib/supabase";
 
 export default function RootLayout({
   children,
@@ -58,6 +49,32 @@ export default function RootLayout({
 
     <html lang="es">
 
+      <head>
+
+        <title>PremOS</title>
+
+        <meta
+          name="description"
+          content="Sistema operativo para premoldeados"
+        />
+
+        <meta
+          name="apple-mobile-web-app-capable"
+          content="yes"
+        />
+
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
+
+        <meta
+          name="apple-mobile-web-app-title"
+          content="PremOS"
+        />
+
+      </head>
+
       <body className="bg-[#07111f] text-white">
 
         <main className="flex h-screen overflow-hidden">
@@ -76,16 +93,16 @@ export default function RootLayout({
 
               </div>
 
-{/* Logout */}
+              {/* Logout */}
               <button
                 onClick={cerrarSesion}
-                className="mt-auto bg-red-250/10 hover:bg-red-500/30 text-red-400 transition px-4 py-1 rounded-xl border border-red-500/20 text-sm"
+                className="mt-auto bg-red-500/10 hover:bg-red-500/30 text-red-400 transition px-4 py-1 rounded-xl border border-red-500/20 text-sm"
               >
                 Cerrar sesión
               </button>
 
               {/* Navegación */}
-              <nav className="flex flex-col gap-3 text-zinc-300 mt-1">
+              <nav className="flex flex-col gap-3 text-zinc-300 mt-4">
 
                 <Link
                   href="/asistente"
