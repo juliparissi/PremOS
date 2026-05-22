@@ -1,12 +1,15 @@
 
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import BackButton from "@/components/BackButton";
 
 export default function EconomiaPage() {
 
+  const router = useRouter();  
   const [movimientos, setMovimientos] = useState<any[]>([]);
 
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -19,6 +22,7 @@ export default function EconomiaPage() {
 
   const [concepto, setConcepto] = useState("");
   const [proveedor, setProveedor] = useState("");
+
 
   const [fechaMovimiento, setFechaMovimiento] = useState(
     new Date().toISOString().split("T")[0]
@@ -166,15 +170,21 @@ async function cargarHistorialAbonos(
     cargarMovimientos();
   }, []);
 
+  
   return (
-    <div>
+
+    <>
+
+      <BackButton />
+
+      <div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
 
         <div>
 
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl md:text-3xl font-bold">
             Economía
           </h1>
 
@@ -184,18 +194,31 @@ async function cargarHistorialAbonos(
 
         </div>
 
-        <div className="flex gap-4">
+        <div className="relative z-50 flex flex-col md:flex-row gap-3 w-full md:w-auto">
 
-          <button
-            onClick={() => setModalAbierto(true)}
-            className="bg-emerald-500 hover:bg-emerald-400 transition px-5 py-3 rounded-2xl font-medium"
-          >
-            Registrar movimiento
-          </button>
+         <>
+
+  {/* Mobile */}
+  <Link
+    href="/economia/nuevo"
+    className="md:hidden bg-emerald-500 hover:bg-emerald-400 transition px-4 py-3 rounded-2xl font-medium text-sm text-center text-black"
+  >
+    Registrar movimiento
+  </Link>
+
+  {/* Desktop */}
+  <button
+    onClick={() => setModalAbierto(true)}
+    className="hidden md:block bg-emerald-500 hover:bg-emerald-400 transition px-4 py-3 rounded-2xl font-medium text-base text-black"
+  >
+    Registrar movimiento
+  </button>
+
+</>
 
           <Link
             href="/economia/historial"
-            className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5"
+            className="bg-white/5 hover:bg-white/10 transition px-4 py-3 rounded-2xl border border-white/5 text-sm md:text-base text-center"
           >
             Historial movimientos
           </Link>
@@ -204,8 +227,98 @@ async function cargarHistorialAbonos(
 
       </div>
 
+{/* Mobile cards */}
+<div className="md:hidden space-y-4 mb-8">
+
+  {movimientosRecientes.map((movimiento) => (
+
+    <div
+      key={movimiento.id}
+      className="bg-[#0b1727] border border-white/5 rounded-3xl p-5"
+    >
+
+      <div className="flex items-center justify-between mb-3">
+
+        <div className="text-sm text-zinc-500">
+
+          {movimiento.fecha
+            ?.split("-")
+            .reverse()
+            .join("/")}
+
+        </div>
+
+        <div>
+
+          {movimiento.tipo?.toLowerCase() === "ingreso" && (
+            <span className="text-emerald-400">
+              Ingreso
+            </span>
+          )}
+
+          {movimiento.tipo?.toLowerCase() === "gasto" && (
+            <span className="text-red-400">
+              Gasto
+            </span>
+          )}
+
+        </div>
+
+      </div>
+
+      <h3 className="text-lg text-white">
+
+        {movimiento.concepto}
+
+      </h3>
+
+      <div className="mt-4 space-y-2 text-sm">
+
+        <div className="flex justify-between">
+
+          <span className="text-white">
+            Abonado
+          </span>
+
+          <span className="text-white">
+
+            $
+            {Number(
+              movimiento.monto_abonado || 0
+            ).toLocaleString("es-AR")}
+
+          </span>
+
+        </div>
+
+        <div className="flex justify-between">
+
+          <span className="text-white">
+            Saldo pendiente
+          </span>
+
+          <span className="text-yellow-400">
+
+            $
+            {Number(
+              movimiento.saldo_pendiente || 0
+            ).toLocaleString("es-AR")}
+
+          </span>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  ))}
+
+</div>
+
+
       {/* Movimientos */}
-      <div className="bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden mb-10">
+      <div className="hidden md:block bg-[#0b1727] border border-white/5 rounded-3xl overflow-x-auto mb-10">
 
         {/* Header */}
         <div className="px-6 py-5 border-b border-white/5">
@@ -221,7 +334,7 @@ async function cargarHistorialAbonos(
         </div>
 
         {/* Head */}
-        <div className="grid grid-cols-5 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
+        <div className="grid grid-cols-5 min-w-[700px] px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
 
           <div>Fecha</div>
           <div>Tipo</div>
@@ -236,7 +349,7 @@ async function cargarHistorialAbonos(
 
           <div
             key={movimiento.id}
-            className="grid grid-cols-5 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
+            className="grid grid-cols-5 min-w-[700px] px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
           >
 
             <div>
@@ -248,13 +361,13 @@ async function cargarHistorialAbonos(
 
             <div>
 
-              {movimiento.tipo === "Ingreso" && (
+              {movimiento.tipo?.toLowerCase() === "ingreso" && (
                 <span className="text-emerald-400">
                   Ingreso
                 </span>
               )}
 
-              {movimiento.tipo === "Gasto" && (
+              {movimiento.tipo?.toLowerCase() === "gasto" && (
                 <span className="text-red-400">
                   Gasto
                 </span>
@@ -268,7 +381,7 @@ async function cargarHistorialAbonos(
 
             <div>
 
-              {movimiento.tipo === "Ingreso" && (
+              {movimiento.tipo?.toLowerCase() === "ingreso" && (
 
   <button
     onClick={async () => {
@@ -291,7 +404,7 @@ async function cargarHistorialAbonos(
 
 )}
 
-              {movimiento.tipo === "Gasto" && (
+              {movimiento.tipo?.toLowerCase() === "gasto" && (
                 <span className="text-red-400">
                   -$
                   {Number(movimiento.monto_abonado)
@@ -301,7 +414,7 @@ async function cargarHistorialAbonos(
 
             </div>
 
-{movimiento.tipo === "Gasto" ? (
+{movimiento.tipo?.toLowerCase() === "gasto" ? (
 
   <div className="flex items-center gap-1 -mt-2">
 
@@ -351,7 +464,7 @@ async function cargarHistorialAbonos(
 
 ) : (
 
-  <span className="text-zinc-500">
+  <span className="text-white">
     -
   </span>
 
@@ -379,7 +492,7 @@ async function cargarHistorialAbonos(
             </button>
 
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-6">
 
               <h2 className="text-3xl font-bold">
                 Registrar movimiento
@@ -493,7 +606,7 @@ async function cargarHistorialAbonos(
             </div>
 
             {/* Monto abonado */}
-            <div className="mb-8">
+            <div className="mb-6">
 
               <label className="text-zinc-500 text-sm">
                 Monto abonado
@@ -551,9 +664,9 @@ async function cargarHistorialAbonos(
       {/* Modal abono */}
       {modalAbono && (
 
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 md:p-6">
 
-          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-2xl p-8 relative">
+          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-2xl p-5 md:p-8 relative max-h-[90vh] overflow-y-auto">
 
             {/* X */}
             <button
@@ -564,7 +677,7 @@ async function cargarHistorialAbonos(
             </button>
 
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-6">
 
               <h2 className="text-3xl font-bold">
                 Registrar abono
@@ -638,9 +751,9 @@ async function cargarHistorialAbonos(
 {/* Modal historial abonos */}
 {modalHistorialAbonos && (
 
-  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+  <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 md:p-6">
 
-    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-2xl p-8 relative">
+    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-2xl p-5 md:p-8 relative max-h-[90vh] overflow-y-auto">
 
       {/* X */}
       <button
@@ -713,7 +826,7 @@ async function cargarHistorialAbonos(
   {/* Header */}
   <div className="px-6 py-5 border-b border-white/5">
 
-    <h2 className="text-2xl font-semibold">
+    <h2 className="text-2xl font-semibold text-white">
       Deudas proveedores
     </h2>
 
@@ -737,25 +850,25 @@ async function cargarHistorialAbonos(
   {movimientos
     .filter(
       (movimiento) =>
-        movimiento.tipo === "Gasto" &&
+        movimiento.tipo?.toLowerCase() === "gasto" &&
         movimiento.saldo_pendiente > 0
     )
     .map((movimiento) => (
 
       <div
         key={movimiento.id}
-        className="grid grid-cols-4 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
+        className="grid grid-cols-4 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition text-white"
       >
 
-        <div>
+        <div className="text-white">
           {movimiento.detalle}
         </div>
 
-        <div>
+        <div className="text-white">
           {movimiento.concepto}
         </div>
 
-        <div>
+        <div className="text-white">
 
           $
           {Number(movimiento.monto_abonado)
@@ -777,6 +890,9 @@ async function cargarHistorialAbonos(
 
 </div>
 
-    </div>
+    
+          </div>
+
+    </>
   );
 }

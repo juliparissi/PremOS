@@ -136,9 +136,9 @@ export default function HistorialMovimientosPage() {
     <div>
 
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
 
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-2xl md:text-3xl font-bold text-white">
           Historial movimientos
         </h1>
 
@@ -158,18 +158,18 @@ export default function HistorialMovimientosPage() {
           onChange={(e) =>
             setBusqueda(e.target.value)
           }
-          className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
+          className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
         />
 
       </div>
 
       {/* Tabla */}
-      <div className="bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden">
+      <div className="bg-[#0b1727] border border-white/5 rounded-3xl overflow-x-auto">
 
         {/* Header */}
         <div className="px-6 py-5 border-b border-white/5">
 
-          <h2 className="text-2xl font-semibold">
+          <h2 className="text-2xl font-semibold text-white">
             Historial movimientos
           </h2>
 
@@ -180,7 +180,7 @@ export default function HistorialMovimientosPage() {
         </div>
 
         {/* Head */}
-        <div className="grid grid-cols-5 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
+        <div className="grid grid-cols-5 min-w-[850px] px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
 
           <div>Fecha</div>
           <div>Tipo</div>
@@ -195,7 +195,7 @@ export default function HistorialMovimientosPage() {
 
           <div
             key={movimiento.id}
-            className="grid grid-cols-5 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
+            className="grid grid-cols-5 min-w-[850px] px-6 py-5 border-b border-white/5 hover:bg-white/5 transition text-white"
           >
 
             <div>
@@ -207,13 +207,13 @@ export default function HistorialMovimientosPage() {
 
             <div>
 
-              {movimiento.tipo === "Ingreso" && (
+              {movimiento.tipo?.toLowerCase() === "ingreso" && (
                 <span className="text-emerald-400">
                   Ingreso
                 </span>
               )}
 
-              {movimiento.tipo === "Gasto" && (
+              {movimiento.tipo?.toLowerCase() === "gasto" && (
                 <span className="text-red-400">
                   Gasto
                 </span>
@@ -227,7 +227,7 @@ export default function HistorialMovimientosPage() {
 
             <div>
 
-              {movimiento.tipo === "Ingreso" && (
+              {movimiento.tipo?.toLowerCase() === "ingreso" && (
 
                 <button
                   onClick={async () => {
@@ -250,7 +250,7 @@ export default function HistorialMovimientosPage() {
 
               )}
 
-              {movimiento.tipo === "Gasto" && (
+              {movimiento.tipo?.toLowerCase() === "gasto" && (
                 <span className="text-red-400">
                   -$
                   {Number(movimiento.monto_abonado)
@@ -270,7 +270,7 @@ export default function HistorialMovimientosPage() {
 
               </span>
 
-              {movimiento.tipo === "Gasto" && (
+              {movimiento.tipo?.toLowerCase() === "gasto" && (
 
   <button
     onClick={() => {
@@ -303,7 +303,7 @@ export default function HistorialMovimientosPage() {
                     setModalAbono(true);
 
                   }}
-                  className="bg-white/5 hover:bg-white/10 transition px-3 py-2 rounded-xl border border-white/5 text-sm"
+                  className="bg-white/5 hover:bg-white/10 transition px-2 md:px-3 py-2 rounded-xl border border-white/5 text-xs md:text-sm whitespace-nowrap"
                 >
                   Abonar
                 </button>
@@ -319,7 +319,7 @@ export default function HistorialMovimientosPage() {
       </div>
 
       {/* Paginación */}
-      <div className="flex items-center justify-between mt-8">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-8 pb-4">
 
         <button
           disabled={paginaActual === 1}
@@ -359,7 +359,7 @@ export default function HistorialMovimientosPage() {
 
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6">
 
-          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-2xl p-8 relative">
+          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-2xl p-5 md:p-8 relative max-h-[90vh] overflow-y-auto">
 
             {/* X */}
             <button
@@ -370,9 +370,9 @@ export default function HistorialMovimientosPage() {
             </button>
 
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-6">
 
-              <h2 className="text-3xl font-bold">
+              <h2 className="text-3xl font-bold text-white">
                 Registrar abono
               </h2>
 
@@ -409,7 +409,7 @@ export default function HistorialMovimientosPage() {
                 onChange={(e) =>
                   setMontoAbono(e.target.value)
                 }
-                className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
+                className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
               />
 
               <input
@@ -418,7 +418,7 @@ export default function HistorialMovimientosPage() {
   onChange={(e) =>
     setFechaAbono(e.target.value)
   }
-  className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
+  className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
 />
 
             </div>
@@ -459,7 +459,7 @@ export default function HistorialMovimientosPage() {
             </button>
 
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-6">
 
               <h2 className="text-3xl font-bold">
                 Historial de abonos

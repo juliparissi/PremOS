@@ -100,21 +100,17 @@ export default function HomePage() {
       {/* Header */}
       <div className="mb-2 md:mb-6 shrink-0">
 
-        <h1 className="text-2xl md:text-3xl font-bold mb-1 text-white">
+        <h1 className="hidden md:block text-3xl font-bold mb-1 text-white">
           Asistente PremOS
         </h1>
-
-        <p className="text-zinc-400 text-sm">
-          Consultá información del sistema en tiempo real.
-        </p>
 
       </div>
 
       {/* Chat */}
-      <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-2 pb-8 md:p-4 flex flex-col flex-1 overflow-hidden h-full min-h-0">
+      <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-2 pb-8 md:p-4 flex flex-col flex-1 max-h-[72vh] md:max-h-full overflow-hidden min-h-0">
 
         {/* Header */}
-        <div className="mb-2 md:mb-4 shrink-0">
+        <div className="mb-2 md:mb-6 shrink-0">
 
           <h2 className="text-lg md:text-xl font-semibold text-emerald-400">
             Chat PremOS IA
@@ -194,6 +190,71 @@ export default function HomePage() {
         </div>
 
       </div>
+
+{/* Quick Modules Mobile */}
+<div className="grid grid-cols-2 gap-3 mt-2 md:hidden">
+
+  <a
+    href="/pedidos"
+    className="bg-[#0b1727] border border-white/5 rounded-2xl p-3 active:scale-95 transition"
+  >
+
+    <p className="text-zinc-400 text-xs mb-2">
+      Pedidos
+    </p>
+
+    <h3 className="text-xl font-bold text-white">
+      📦
+    </h3>
+
+  </a>
+
+  <a
+    href="/economia"
+    className="bg-[#0b1727] border border-white/5 rounded-2xl p-4 active:scale-95 transition"
+  >
+
+    <p className="text-zinc-400 text-xs mb-2">
+      Economía
+    </p>
+
+    <h3 className="text-xl font-bold text-white">
+      💰
+    </h3>
+
+  </a>
+
+  <a
+    href="/produccion"
+    className="bg-[#0b1727] border border-white/5 rounded-2xl p-4 active:scale-95 transition"
+  >
+
+    <p className="text-zinc-400 text-xs mb-2">
+      Producción
+    </p>
+
+    <h3 className="text-xl font-bold text-white">
+      🧱
+    </h3>
+
+  </a>
+
+  <a
+    href="/resumen"
+    className="bg-[#0b1727] border border-white/5 rounded-2xl p-4 active:scale-95 transition"
+  >
+
+    <p className="text-zinc-400 text-xs mb-2">
+      Resumen
+    </p>
+
+    <h3 className="text-xl font-bold text-white">
+      📊
+    </h3>
+
+  </a>
+
+</div>
 
     </div>
 

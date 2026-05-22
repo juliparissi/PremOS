@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import BackButton from "@/components/BackButton";
 
 export default function ResumenPage() {
 
@@ -225,10 +226,14 @@ async function guardarNota() {
   }, []);
 
   return (
-    <div>
+
+  <>
+
+    <BackButton />
+    <div className="min-h-screen overflow-y-auto pb-24">
 
       {/* Header */}
-      <div className="mb-10">
+      <div className="mb-8">
 
         <h1 className="text-3xl font-bold">
           Resumen general
@@ -241,10 +246,10 @@ async function guardarNota() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
 
         {/* Clientes */}
-        <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">
+        <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6 text-white">
 
           <p className="text-zinc-500">
             Clientes
@@ -381,7 +386,7 @@ async function guardarNota() {
       </div>
 
 {/* Grid inferior */}
-<div className="grid grid-cols-2 gap-6 mt-8">
+<div className="hidden md:grid grid grid-cols-2 gap-6 mt-8">
 
   {/* Calendario */}
   <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">
@@ -595,6 +600,8 @@ async function guardarNota() {
 
 )}
 
+    
     </div>
+</>
   );
 }

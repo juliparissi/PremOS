@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import BackButton from "@/components/BackButton";
 
 type Pedido = {
   id: string;
@@ -144,6 +145,11 @@ const pedidosPaginados =
   }, []);
 
   return (
+
+  <>
+
+    <BackButton />
+
     <div>
 
       {/* Header */}
@@ -183,8 +189,165 @@ const pedidosPaginados =
 
       </div>
 
+{/* Mobile producción */}
+<div className="md:hidden space-y-4 mb-8">
+
+  {pedidosPaginados.map((pedido) => (
+
+    <div
+      key={pedido.id}
+      className="bg-[#0b1727] border border-white/5 rounded-3xl p-5"
+    >
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+
+        <div>
+
+          <p className="text-zinc-500 text-sm">
+            Pedido
+          </p>
+
+          <h3 className="text-xl font-bold text-white">
+
+            {pedido.numero}
+
+          </h3>
+
+        </div>
+
+        <div>
+
+          {pedido.estado === "En producción" && (
+            <span className="text-yellow-400 text-sm">
+              En producción
+            </span>
+          )}
+
+          {pedido.estado === "Finalizando" && (
+            <span className="text-cyan-400 text-sm">
+              Finalizando
+            </span>
+          )}
+
+          {pedido.estado === "Enviar/Retirar" && (
+            <span className="text-emerald-400 text-sm">
+              Enviar/Retirar
+            </span>
+          )}
+
+        </div>
+
+      </div>
+
+      {/* Datos */}
+      <div className="space-y-3 text-sm">
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Cliente
+          </span>
+
+          <span className="text-white">
+
+            {
+              clientes.find(
+                (c) => c.id === pedido.cliente_id
+              )?.nombre
+            }
+
+          </span>
+
+        </div>
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Inicio
+          </span>
+
+          <span className="text-white">
+
+            {pedido.fecha_inicio_produccion
+              ?.split("-")
+              .reverse()
+              .join("/")}
+
+          </span>
+
+        </div>
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Entrega
+          </span>
+
+          <span className="text-white">
+
+            {pedido.fecha_entrega
+              ?.split("-")
+              .reverse()
+              .join("/")}
+
+          </span>
+
+        </div>
+
+      </div>
+
+      {/* Botones */}
+      <div className="grid grid-cols-2 gap-3 mt-5">
+
+        <button
+          onClick={async () => {
+
+            setPedidoSeleccionado(pedido);
+
+            await cargarItemsPedido(
+              pedido.id
+            );
+
+            setDetalleAbierto(true);
+
+          }}
+          className="bg-white/5 hover:bg-white/10 transition border border-white/5 rounded-2xl py-3 text-white"
+        >
+
+          Ver detalle
+
+        </button>
+
+        <button
+          onClick={() => {
+
+            setPedidoSeleccionado(pedido);
+
+            setObservaciones(
+              pedido.observaciones || ""
+            );
+
+            setRutaAbierta(true);
+
+          }}
+          className="bg-emerald-500 hover:bg-emerald-400 transition rounded-2xl py-3 text-white"
+        >
+
+          Modificar
+
+        </button>
+
+      </div>
+
+    </div>
+
+  ))}
+
+</div>
+
       {/* Tabla principal */}
-      <div className="bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden">
+      <div className="hidden md:block bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden">
               {/* Head */}
         <div className="grid grid-cols-6 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
 
@@ -346,7 +509,7 @@ const pedidosPaginados =
 
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6">
 
-          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-3xl p-8 relative">
+          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-3xl p-8 relative text-white">
 
             {/* X */}
             <button
@@ -357,7 +520,7 @@ const pedidosPaginados =
             </button>
 
             {/* Header */}
-<div className="mb-8">
+<div className="mb-8 text-white">
 
   <h2 className="text-3xl font-bold">
     {pedidoSeleccionado.numero}
@@ -414,7 +577,7 @@ const pedidosPaginados =
 <div className="bg-[#07111f] border border-white/5 rounded-3xl overflow-hidden mt-8">
 
   {/* Head */}
-  <div className="grid grid-cols-4 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
+  <div className="grid-cols-1 md:grid-cols-4 gap-3 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
 
     <div>Modelo</div>
     <div>Color</div>
@@ -428,7 +591,7 @@ const pedidosPaginados =
 
     <div
       key={item.id}
-      className="grid grid-cols-4 px-6 py-5 border-b border-white/5"
+      className="grid-cols-1 md:grid-cols-4 px-6 py-5 border-b border-white/5"
     >
 
       <div>
@@ -464,7 +627,7 @@ const pedidosPaginados =
 
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6 overflow-y-auto">
 
-          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-3xl p-8 relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-3xl p-8 relative max-h-[90vh] overflow-y-auto text-white">
 
             {/* X */}
             <button
@@ -507,7 +670,7 @@ const pedidosPaginados =
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
               <button
                 onClick={() =>
@@ -549,7 +712,7 @@ const pedidosPaginados =
 
   <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6">
 
-    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-3xl p-8 relative max-h-[90vh] overflow-y-auto">
+    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-3xl p-8 relative max-h-[90vh] overflow-y-auto text-white">
 
       {/* X */}
       <button
@@ -641,6 +804,8 @@ const pedidosPaginados =
 
 )}
 
+    
     </div>
+</>
   );
 }

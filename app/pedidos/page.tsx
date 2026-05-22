@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { generarPDFPresupuesto } from "../../utils/generarPDF";
+import BackButton from "@/components/BackButton";
 
 type Pedido = {
   presupuesto_id?: string;
@@ -375,6 +376,11 @@ const pedidosPaginados =
   }, []);
 
   return (
+
+  <>
+
+    <BackButton />
+
     <div>
       
       {/* Header */}
@@ -439,8 +445,164 @@ const pedidosPaginados =
         </div>
       </div>
 
+{/* Mobile pedidos */}
+<div className="md:hidden space-y-4 mb-8">
+
+  {pedidosPaginados.map((pedido) => (
+
+    <div
+      key={pedido.id}
+      className="bg-[#0b1727] border border-white/5 rounded-3xl p-5"
+    >
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+
+        <div>
+
+          <p className="text-zinc-500 text-sm">
+            Pedido
+          </p>
+
+          <h3 className="text-xl font-bold text-white">
+
+            #{pedido.numero}
+
+          </h3>
+
+        </div>
+
+        <div>
+
+          {pedido.estado === "A producir" && (
+            <span className="text-yellow-400 text-sm">
+              A producir
+            </span>
+          )}
+
+          {pedido.estado === "En producción" && (
+            <span className="text-cyan-400 text-sm">
+              Producción
+            </span>
+          )}
+
+          {pedido.estado === "Finalizando" && (
+            <span className="text-blue-400 text-sm">
+              Finalizando
+            </span>
+          )}
+
+          {pedido.estado === "Enviar/Retirar" && (
+            <span className="text-emerald-400 text-sm">
+              Listo
+            </span>
+          )}
+
+          {pedido.estado === "Entregado" && (
+            <span className="text-emerald-400 text-sm">
+              Entregado
+            </span>
+          )}
+
+        </div>
+
+      </div>
+
+      {/* Datos */}
+      <div className="space-y-3 text-sm">
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Cliente
+          </span>
+
+          <span className="text-white">
+
+            {
+              clientes.find(
+                (c) => c.id === pedido.cliente_id
+              )?.nombre || "Cliente"
+            }
+
+          </span>
+
+        </div>
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Entrega
+          </span>
+
+          <span className="text-white">
+
+            {pedido.fecha_entrega}
+
+          </span>
+
+        </div>
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Estado pago
+          </span>
+
+          <span>
+
+            {pedido.estado_pago === "Pendiente" && (
+              <span className="text-red-400">
+                Pendiente
+              </span>
+            )}
+
+            {pedido.estado_pago === "Parcial" && (
+              <span className="text-yellow-400">
+                Parcial
+              </span>
+            )}
+
+            {pedido.estado_pago === "Pagado" && (
+              <span className="text-emerald-400">
+                Pagado
+              </span>
+            )}
+
+          </span>
+
+        </div>
+
+      </div>
+
+      {/* Botón */}
+      <button
+        onClick={async () => {
+
+          setPedidoSeleccionado(pedido);
+
+          await cargarItemsPedido(
+            pedido.id
+          );
+
+          setModalAbierto(true);
+
+        }}
+        className="mt-5 w-full bg-white/5 hover:bg-white/10 transition border border-white/5 rounded-2xl py-3 text-white"
+      >
+
+        Ver información
+
+      </button>
+
+    </div>
+
+  ))}
+
+</div>
+
       {/* Tabla */}
-      <div className="bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden">
+      <div className="hidden md:block bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden">
         {/* Header tabla */}
         <div className="px-6 py-5 border-b border-white/5">
           <h2 className="text-xl font-semibold">
@@ -620,11 +782,11 @@ const pedidosPaginados =
       {/* Modal */}
       {modalAbierto && pedidoSeleccionado && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6 overflow-y-auto">
-          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-5xl p-8 relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-5xl mx-4 md:mx-0 p-5 md:p-8 relative max-h-[90vh] overflow-y-auto text-white">
             {/* X cerrar */}
             <button
               onClick={() => setModalAbierto(false)}
-              className="absolute top-6 right-6 text-zinc-400 hover:text-white transition text-3xl"
+              className="absolute top-2 -right-1 text-zinc-400 hover:text-white transition text-3xl z-50"
             >
               ×
             </button>
@@ -779,7 +941,7 @@ const pedidosPaginados =
 </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
               <div className="bg-[#07111f] border border-white/5 rounded-3xl p-6">
                 <p className="text-zinc-500">Saldo total</p>
                 <h3 className="text-2xl font-bold mt-3">
@@ -838,7 +1000,7 @@ const pedidosPaginados =
 </div>
 
             {/* Acciones */}
-<div className="flex gap-4 mb-8">
+<div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
 
   <button
     onClick={() => setModalPago(true)}
@@ -856,7 +1018,7 @@ const pedidosPaginados =
 
   <button
   onClick={() => setModalEntrega(true)}
-  className="bg-white/5 hover:bg-white/10 transition px-4 py-2 rounded-xl border border-white/5 text-sm"
+  className="bg-white/5 hover:bg-white/10 transition px-4 py-2 rounded-xl border border-white/5 text-sm col-span-2 md:col-span-1"
 >
   Programar entrega
 </button>
@@ -944,7 +1106,7 @@ setModalEntregaFinal(false);
       {/* X */}
       <button
         onClick={() => setModalPago(false)}
-        className="absolute top-6 right-6 text-zinc-400 hover:text-white transition text-3xl"
+        className="absolute top-6 right-6 text-white hover:text-white transition text-3xl"
       >
         ×
       </button>
@@ -1010,6 +1172,22 @@ setModalEntregaFinal(false);
             Mercado Pago
           </option>
 
+          <option value="credito_1_pago">
+            Crédito 1 pago
+          </option>
+
+          <option value="credito_3_cuotas">
+            Crédito 3 cuotas
+          </option>
+
+          <option value="credito_6_cuotas">
+            Crédito 6 cuotas
+          </option>
+
+          <option value="credito_12_cuotas">
+            Crédito 12 cuotas
+          </option>
+
         </select>
 
         <textarea
@@ -1042,31 +1220,143 @@ setModalEntregaFinal(false);
 )}
 </div>
 
-            {/* Productos */}
-            <div className="bg-[#07111f] border border-white/5 rounded-3xl overflow-hidden mb-8">
-              <div className="grid grid-cols-6 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
-                <div>Producto</div>
-                <div>Variante</div>
-                <div>Color</div>
-                <div>Cantidad</div>
-                <div>Unidad</div>
-                <div>Total</div>
-              </div>
+{/* Productos */}
+<div className="bg-[#07111f] border border-white/5 rounded-3xl overflow-hidden mb-8">
 
-              {pedidoItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="grid grid-cols-6 px-6 py-5 border-b border-white/5"
-                >
-                  <div>{item.producto}</div>
-                  <div>{item.modelo}</div>
-                  <div>{item.color}</div>
-                  <div>{item.cantidad}</div>
-                  <div>{item.unidad}</div>
-                  <div>${item.total}</div>
-                </div>
-              ))}
-            </div>
+  {/* Desktop */}
+  <div className="hidden md:block">
+
+    <div className="grid grid-cols-6 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
+
+      <div>Producto</div>
+      <div>Variante</div>
+      <div>Color</div>
+      <div>Cantidad</div>
+      <div>Unidad</div>
+      <div>Total</div>
+
+    </div>
+
+    {pedidoItems.map((item) => (
+
+      <div
+        key={item.id}
+        className="grid grid-cols-6 px-6 py-5 border-b border-white/5"
+      >
+
+        <div>{item.producto}</div>
+        <div>{item.modelo}</div>
+        <div>{item.color}</div>
+        <div>{item.cantidad}</div>
+        <div>{item.unidad}</div>
+
+        <div>
+
+          $
+          {Number(item.total)
+            .toLocaleString("es-AR")}
+
+        </div>
+
+      </div>
+
+    ))}
+
+  </div>
+
+  {/* Mobile */}
+  <div className="md:hidden p-4 space-y-4">
+
+    {pedidoItems.map((item) => (
+
+      <div
+        key={item.id}
+        className="bg-[#0b1727] border border-white/5 rounded-2xl p-4 space-y-3"
+      >
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Producto
+          </span>
+
+          <span className="text-white">
+            {item.producto}
+          </span>
+
+        </div>
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Variante
+          </span>
+
+          <span className="text-white">
+            {item.modelo}
+          </span>
+
+        </div>
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Color
+          </span>
+
+          <span className="text-white">
+            {item.color}
+          </span>
+
+        </div>
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Cantidad
+          </span>
+
+          <span className="text-white">
+            {item.cantidad}
+          </span>
+
+        </div>
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Unidad
+          </span>
+
+          <span className="text-white">
+            {item.unidad}
+          </span>
+
+        </div>
+
+        <div className="flex justify-between">
+
+          <span className="text-zinc-500">
+            Total
+          </span>
+
+          <span className="text-emerald-400 font-semibold">
+
+            $
+            {Number(item.total)
+              .toLocaleString("es-AR")}
+
+          </span>
+
+        </div>
+
+      </div>
+
+    ))}
+
+  </div>
+
+</div>
 
 {/* Observaciones */}
 <div className="bg-[#07111f] border border-white/5 rounded-3xl p-6 mb-8">
@@ -1128,7 +1418,7 @@ setModalEntregaFinal(false);
       {/* X */}
       <button
         onClick={() => setModalHistorialPagos(false)}
-        className="absolute top-6 right-6 text-zinc-400 hover:text-white transition text-3xl"
+        className="absolute top-6 right-6 text-white hover:text-white transition text-3xl"
       >
         ×
       </button>
@@ -1150,7 +1440,7 @@ setModalEntregaFinal(false);
       <div className="bg-[#07111f] border border-white/5 rounded-3xl overflow-hidden">
 
         {/* Head */}
-        <div className="grid grid-cols-4 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-4 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
 
           <div>Fecha</div>
           <div>Método</div>
@@ -1164,7 +1454,7 @@ setModalEntregaFinal(false);
 
           <div
             key={pago.id}
-            className="grid grid-cols-4 px-6 py-5 border-b border-white/5"
+            className="grid grid-cols-1 md:grid-cols-4 px-6 py-5 border-b border-white/5"
           >
 
             <div>
@@ -1216,7 +1506,7 @@ setModalEntregaFinal(false);
       {/* Header */}
       <div className="mb-8">
 
-        <h2 className="text-3xl font-bold">
+        <h2 className="text-3xl font-bold text-white">
           Programar entrega
         </h2>
 
@@ -1362,6 +1652,8 @@ setModalEntregaFinal(false);
 
 )}
 
+    
     </div>
+</>
   );
 }

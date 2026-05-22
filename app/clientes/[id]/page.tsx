@@ -55,6 +55,9 @@ export default function ClienteDetallePage() {
       telefono:
         clienteSeleccionado.telefono,
 
+      direccion:
+        clienteSeleccionado.direccion,
+
       localidad:
         clienteSeleccionado.localidad,
 
@@ -559,6 +562,28 @@ export default function ClienteDetallePage() {
           />
 
         </div>
+
+        <div>
+
+  <p className="text-sm text-zinc-400 mb-2">
+    Dirección
+  </p>
+
+  <input
+    type="text"
+    value={
+      clienteSeleccionado?.direccion || ""
+    }
+    onChange={(e) =>
+      setClienteSeleccionado({
+        ...clienteSeleccionado,
+        direccion: e.target.value,
+      })
+    }
+    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
+  />
+
+</div>
 
         {/* Localidad */}
         <div>
