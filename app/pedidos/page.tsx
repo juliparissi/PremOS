@@ -877,7 +877,7 @@ const pedidosPaginados =
 
         numero: pedidoSeleccionado.numero,
 
-        fecha: pedidoSeleccionado.fecha_entrega,
+        fecha: new Date().toLocaleDateString("es-AR"),
 
         cliente:
           clientes.find(
