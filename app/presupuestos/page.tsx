@@ -675,7 +675,7 @@ const presupuestosPaginados =
 
       numero: presupuesto.numero,
 
-      fecha: presupuesto.fecha,
+      fecha: new Date().toLocaleDateString("es-AR"),
 
       cliente:
         clientes.find(
