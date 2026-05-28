@@ -60,6 +60,7 @@ export default function PedidosPage() {
   const [modalEntrega, setModalEntrega] = useState(false);
   const [fechaEntrega, setFechaEntrega] = useState("");
   const [modalHistorialPagos, setModalHistorialPagos] = useState(false);
+  const [modalEstado, setModalEstado] = useState(false);
 
   const [montoPago, setMontoPago] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
@@ -486,6 +487,12 @@ const pedidosPaginados =
             </span>
           )}
 
+          {pedido.estado === "Demorado" && (
+  <span className="text-red-400 text-sm">
+    Demorado
+  </span>
+)}
+
           {pedido.estado === "Finalizando" && (
             <span className="text-blue-400 text-sm">
               Finalizando
@@ -654,6 +661,12 @@ const pedidosPaginados =
                   En producción
                 </span>
               )}
+
+              {pedido.estado === "Demorado" && (
+  <span className="text-red-400 text-s">
+    Demorado
+  </span>
+)}
 
               {pedido.estado === "Finalizando" && (
 
@@ -970,11 +983,15 @@ const pedidosPaginados =
     ? "text-yellow-400"
     : pedidoSeleccionado.estado === "En producción"
     ? "text-cyan-400"
+    : pedidoSeleccionado.estado === "Demorado"
+    ? "text-red-400"
+    : pedidoSeleccionado.estado === "Finalizando"
+    ? "text-blue-400"
     : pedidoSeleccionado.estado === "Enviar/Retirar"
     ? "text-emerald-400"
     : pedidoSeleccionado.estado === "Entregado"
     ? "text-emerald-400"
-    : "text-blue-400"
+    : "text-white"
 }`}>
   {pedidoSeleccionado.estado}
 </h3>
@@ -1024,36 +1041,10 @@ const pedidosPaginados =
 </button>
 
   <button
-  onClick={async () => {
-
-    console.log("guardar fecha");
-    console.log(fechaEntrega);
-    console.log(pedidoSeleccionado);
-
-    const hoy = new Date()
-      .toISOString()
-      .split("T")[0];
-
-    await supabase
-      .from("pedidos")
-      .update({
-        estado: "En producción",
-        fecha_inicio_produccion: hoy,
-      })
-      .eq("id", pedidoSeleccionado.id);
-
-    setPedidoSeleccionado({
-      ...pedidoSeleccionado,
-      estado: "En producción",
-      fecha_inicio_produccion: hoy,
-    });
-
-    cargarPedidos();
-
-  }}
+  onClick={() => setModalEstado(true)}
   className="bg-white/5 hover:bg-white/10 transition px-4 py-2 rounded-xl border border-white/5 text-sm"
 >
-  Pasar a producción
+  Cambiar estado
 </button>
 
   <button
@@ -1479,6 +1470,151 @@ setModalEntregaFinal(false);
           </div>
 
         ))}
+
+      </div>
+
+    </div>
+
+  </div>
+
+)}
+
+{/* Modal estado */}
+{modalEstado && (
+
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+
+    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-xl p-8 relative">
+
+      {/* X */}
+      <button
+        onClick={() => setModalEstado(false)}
+        className="absolute top-6 right-6 text-zinc-400 hover:text-white transition text-3xl"
+      >
+        ×
+      </button>
+
+      {/* Header */}
+      <div className="mb-8">
+
+        <h2 className="text-3xl font-bold">
+          Cambiar estado
+        </h2>
+
+        <p className="text-zinc-500 mt-1">
+          Seleccionar estado operativo
+        </p>
+
+      </div>
+
+      {/* Estados */}
+      <div className="space-y-4">
+
+        <button
+          onClick={async () => {
+
+            const hoy = new Date()
+              .toISOString()
+              .split("T")[0];
+
+            await supabase
+              .from("pedidos")
+              .update({
+                estado: "En producción",
+                fecha_inicio_produccion: hoy,
+              })
+              .eq("id", pedidoSeleccionado.id);
+
+            setPedidoSeleccionado({
+              ...pedidoSeleccionado,
+              estado: "En producción",
+              fecha_inicio_produccion: hoy,
+            });
+
+            cargarPedidos();
+
+            setModalEstado(false);
+
+          }}
+          className="w-full bg-cyan-500/20 hover:bg-cyan-500 transition text-cyan-400 hover:text-white px-4 py-4 rounded-2xl border border-cyan-500/20"
+        >
+          En producción
+        </button>
+
+        <button
+          onClick={async () => {
+
+            await supabase
+              .from("pedidos")
+              .update({
+                estado: "Demorado",
+              })
+              .eq("id", pedidoSeleccionado.id);
+
+            setPedidoSeleccionado({
+              ...pedidoSeleccionado,
+              estado: "Demorado",
+            });
+
+            cargarPedidos();
+
+            setModalEstado(false);
+
+          }}
+          className="w-full bg-red-500/20 hover:bg-red-500 transition text-red-400 hover:text-white px-4 py-4 rounded-2xl border border-red-500/20"
+        >
+          Demorado
+        </button>
+
+        <button
+          onClick={async () => {
+
+            await supabase
+              .from("pedidos")
+              .update({
+                estado: "Finalizando",
+              })
+              .eq("id", pedidoSeleccionado.id);
+
+            setPedidoSeleccionado({
+              ...pedidoSeleccionado,
+              estado: "Finalizando",
+            });
+
+            cargarPedidos();
+
+            setModalEstado(false);
+
+          }}
+          className="w-full bg-blue-500/20 hover:bg-blue-500 transition text-blue-400 hover:text-white px-4 py-4 rounded-2xl border border-blue-500/20"
+        >
+          Finalizando
+        </button>
+
+        <button
+  onClick={async () => {
+
+    await supabase
+      .from("pedidos")
+      .update({
+        estado: "Enviar/Retirar",
+      })
+      .eq("id", pedidoSeleccionado.id);
+
+    setPedidoSeleccionado({
+      ...pedidoSeleccionado,
+      estado: "Enviar/Retirar",
+    });
+
+    cargarPedidos();
+
+    setModalEstado(false);
+
+  }}
+  className="w-full bg-emerald-500/20 hover:bg-emerald-500 transition text-emerald-400 hover:text-white px-4 py-4 rounded-2xl border border-emerald-500/20"
+>
+  Enviar/Retirar
+</button>
 
       </div>
 
