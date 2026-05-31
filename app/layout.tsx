@@ -87,7 +87,7 @@ export default function RootLayout({
           {/* Sidebar desktop */}
           {!esLogin && (
 
-            <aside className="hidden md:flex w-52 bg-[#081220] border-r border-white/5 p-6 flex-col">
+            <aside className="hidden md:flex w-52 bg-[#081220] border-r border-white/5 p-6 flex-col overflow-y-auto sidebar-scroll">
 
               {/* Logo */}
               <div className="mb-5">
@@ -163,6 +163,20 @@ export default function RootLayout({
                   className="hover:bg-white/5 px-4 py-3 rounded-xl transition block"
                 >
                   Economía
+                </Link>
+
+                <Link
+                  href="/suministro"
+                  className="hover:bg-white/5 px-4 py-3 rounded-xl transition block"
+                >
+                  Suministro
+                </Link>
+
+                <Link
+                  href="/stock"
+                  className="hover:bg-white/5 px-4 py-3 rounded-xl transition block"
+                >
+                  Stock
                 </Link>
 
               </nav>

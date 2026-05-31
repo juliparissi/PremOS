@@ -2,43 +2,283 @@
 
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function SuministroPage() {
 
-  const materiales = [
+const router = useRouter();
+
+const [materiales, setMateriales] = useState<any[]>([]);
+
+const [modalNuevo, setModalNuevo] = useState(false);
+
+const [modalCompra, setModalCompra] = useState(false);
+
+const [suministroCompra, setSuministroCompra] = useState("");
+
+const [cantidadCompra, setCantidadCompra] = useState("");
+
+const [proveedorCompra, setProveedorCompra] = useState("");
+
+const [montoTotal, setMontoTotal] = useState("");
+
+const [montoAbonado, setMontoAbonado] = useState("");
+
+const [observacionCompra, setObservacionCompra] = useState("");
+
+const [fechaCompra, setFechaCompra] = useState(
+  new Date().toISOString().split("T")[0]
+);
+
+const [editandoId, setEditandoId] = useState<string | null>(null);
+
+const [nombre, setNombre] = useState("");
+const [unidad, setUnidad] = useState("");
+
+const [stockActual, setStockActual] = useState("");
+const [stockMinimo, setStockMinimo] = useState("");
+const [stockIdeal, setStockIdeal] = useState("");
+
+const [compras, setCompras] = useState<any[]>([]);
+
+async function cargarSuministros() {
+
+  const { data, error } = await supabase
+    .from("suministros")
+    .select("*")
+    .order("nombre");
+
+  if (error || !data) return;
+
+  const materialesFormateados = data.map((item) => {
+
+    let estado = "Óptimo";
+
+    if (
+      item.stock_minimo > 0 &&
+      item.stock_actual <= item.stock_minimo
+    ) {
+
+      estado = "Crítico";
+
+    } else if (
+      item.stock_ideal > 0 &&
+      item.stock_actual < item.stock_ideal
+    ) {
+
+      estado = "Bajo";
+
+    }
+
+    return {
+
+      id: item.id,
+
+      nombre: item.nombre,
+      unidad: item.unidad,
+
+      stock: item.stock_actual,
+      minimo: item.stock_minimo,
+      objetivo: item.stock_ideal,
+
+      estado,
+
+    };
+
+  });
+
+  setMateriales(materialesFormateados);
+
+}
+
+async function cargarCompras() {
+
+  const { data, error } = await supabase
+    .from("movimientos_suministro")
+    .select(`
+      *,
+      suministros (
+        nombre,
+        unidad
+      )
+    `)
+    .order(
+  "created_at",
+  { ascending: false }
+)
+.limit(5);
+  if (error || !data) return;
+
+  setCompras(data);
+
+}
+
+async function guardarSuministro() {
+
+  if (editandoId) {
+
+  const { error } = await supabase
+    .from("suministros")
+    .update({
+      nombre,
+      unidad,
+      stock_actual: Number(stockActual || 0),
+      stock_minimo: Number(stockMinimo || 0),
+      stock_ideal: Number(stockIdeal || 0),
+      updated_at: new Date(),
+    })
+    .eq("id", editandoId);
+
+  if (error) {
+
+    console.log(error);
+
+    return;
+
+  }
+
+} else {
+
+  const { error } = await supabase
+    .from("suministros")
+    .insert({
+      nombre,
+      unidad,
+      stock_actual: Number(stockActual || 0),
+      stock_minimo: Number(stockMinimo || 0),
+      stock_ideal: Number(stockIdeal || 0),
+      updated_at: new Date(),
+    });
+
+  if (error) {
+
+    console.log(error);
+
+    return;
+
+  }
+
+}
+
+  setNombre("");
+  setUnidad("");
+
+  setStockActual("");
+  setStockMinimo("");
+  setStockIdeal("");
+  setEditandoId(null);
+
+  setModalNuevo(false);
+
+  cargarSuministros();
+
+}
+
+async function guardarCompra() {
+
+  if (
+    !suministroCompra ||
+    !cantidadCompra ||
+    !montoTotal
+  ) {
+
+    alert("Completar campos obligatorios");
+
+    return;
+
+  }
+
+  const material = materiales.find(
+    (item) =>
+      item.id === suministroCompra
+  );
+
+  if (!material) return;
+
+  const nuevoStock =
+    Number(material.stock) +
+    Number(cantidadCompra);
+
+  await supabase
+    .from("suministros")
+    .update({
+      stock_actual: nuevoStock,
+      updated_at: new Date(),
+    })
+    .eq("id", suministroCompra);
+
+  await supabase
+    .from("movimientos_suministro")
+    .insert([
+      {
+        suministro_id:
+          suministroCompra,
+
+        tipo: "Compra",
+
+        cantidad:
+          Number(cantidadCompra),
+
+        proveedor:
+          proveedorCompra,
+
+        monto_total:
+          Number(montoTotal),
+
+        monto_abonado:
+          Number(montoAbonado || 0),
+
+        observacion:
+          observacionCompra,
+      },
+    ]);
+
+    await supabase
+  .from("movimientos_economia")
+  .insert([
     {
-      nombre: "Cemento",
-      unidad: "bolsas",
-      stock: 58,
-      minimo: 40,
-      objetivo: 100,
-      estado: "Óptimo",
+      tipo: "Gasto",
+
+      concepto:
+        `Compra de ${material.nombre}`,
+
+      monto:
+        Number(montoTotal),
+
+      detalle:
+        proveedorCompra ||
+        observacionCompra,
+
+      fecha:
+        fechaCompra,
+
+      monto_total:
+        Number(montoTotal),
+
+      monto_abonado:
+        Number(montoAbonado || 0),
+
+      saldo_pendiente:
+        Number(montoTotal) -
+        Number(montoAbonado || 0),
     },
-    {
-      nombre: "Arena",
-      unidad: "m3",
-      stock: 12,
-      minimo: 10,
-      objetivo: 20,
-      estado: "Bajo",
-    },
-    {
-      nombre: "Piedra",
-      unidad: "m3",
-      stock: 18,
-      minimo: 15,
-      objetivo: 25,
-      estado: "Óptimo",
-    },
-    {
-      nombre: "Color negro",
-      unidad: "kg",
-      stock: 3,
-      minimo: 5,
-      objetivo: 10,
-      estado: "Crítico",
-    },
-  ];
+  ]);
+
+  setModalCompra(false);
+
+  setCantidadCompra("");
+  setProveedorCompra("");
+  setMontoTotal("");
+  setMontoAbonado("");
+  setObservacionCompra("");
+
+  cargarSuministros();
+  cargarCompras();
+
+}
+
 
   const movimientos = [
     {
@@ -71,6 +311,14 @@ export default function SuministroPage() {
     },
   ];
 
+  useEffect(() => {
+
+  cargarSuministros();
+
+  cargarCompras();
+
+}, []);
+
   return (
 
     <>
@@ -94,91 +342,31 @@ export default function SuministroPage() {
 
           </div>
 
-          <button className="bg-blue-500 hover:bg-blue-400 transition px-5 py-3 rounded-2xl text-black font-semibold">
-            Registrar compra
-          </button>
+<div className="flex justify-end gap-4">
+          <button
+  onClick={() => setModalNuevo(true)}
+  className="bg-blue-500 hover:bg-blue-400 transition px-2 py-3 rounded-2xl text-black font-semibold"
+>
+  Nuevo suministro
+</button>
 
-        </div>
+<button
+  onClick={() =>
+    router.push("/suministro/historial")
+  }
+  className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5 text-white"
+>
+  Historial compras
+</button>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+<button
+  onClick={() => setModalCompra(true)}
+  className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl text-black font-semibold"
+>
+  Registrar compra
+</button>
 
-          <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">
-
-            <p className="text-zinc-500 text-sm">
-              Compras del mes
-            </p>
-
-            <h2 className="text-3xl font-bold text-emerald-400 mt-3">
-              $1.250.000
-            </h2>
-
-          </div>
-
-          <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">
-
-            <p className="text-zinc-500 text-sm">
-              Materiales críticos
-            </p>
-
-            <h2 className="text-3xl font-bold text-red-400 mt-3">
-              2
-            </h2>
-
-          </div>
-
-          <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">
-
-            <p className="text-zinc-500 text-sm">
-              Cemento disponible
-            </p>
-
-            <h2 className="text-3xl font-bold text-white mt-3">
-              58
-            </h2>
-
-          </div>
-
-          <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">
-
-            <p className="text-zinc-500 text-sm">
-              Pastones posibles
-            </p>
-
-            <h2 className="text-3xl font-bold text-cyan-400 mt-3">
-              22
-            </h2>
-
-          </div>
-
-        </div>
-
-        {/* Alertas */}
-        <div className="space-y-4 mb-8">
-
-          <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
-
-            <p className="text-red-400 font-semibold">
-              ⚠ Cemento bajo stock
-            </p>
-
-            <p className="text-zinc-400 text-sm mt-1">
-              Stock estimado para 9 días
-            </p>
-
-          </div>
-
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4">
-
-            <p className="text-yellow-400 font-semibold">
-              ⚠ Color negro crítico
-            </p>
-
-            <p className="text-zinc-400 text-sm mt-1">
-              Quedan 3kg disponibles
-            </p>
-
-          </div>
+</div>
 
         </div>
 
@@ -200,7 +388,7 @@ export default function SuministroPage() {
           {/* Desktop */}
           <div className="hidden md:block">
 
-            <div className="grid grid-cols-6 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
+            <div className="grid grid-cols-7 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
 
               <div>Material</div>
               <div>Unidad</div>
@@ -208,6 +396,7 @@ export default function SuministroPage() {
               <div>Mínimo</div>
               <div>Objetivo</div>
               <div>Estado</div>
+              <div>Acciones</div>
 
             </div>
 
@@ -215,7 +404,7 @@ export default function SuministroPage() {
 
               <div
                 key={index}
-                className="grid grid-cols-6 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
+                className="grid grid-cols-7 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
               >
 
                 <div className="text-white">
@@ -260,7 +449,43 @@ export default function SuministroPage() {
 
                 </div>
 
+<div>
+
+  <button
+    onClick={() => {
+
+      setEditandoId(material.id);
+
+      setNombre(material.nombre);
+
+      setUnidad(material.unidad);
+
+      setStockActual(
+        String(material.stock)
+      );
+
+      setStockMinimo(
+        String(material.minimo)
+      );
+
+      setStockIdeal(
+        String(material.objetivo)
+      );
+
+      setModalNuevo(true);
+
+    }}
+    className="text-cyan-400 hover:text-cyan-300"
+  >
+
+    ✏️ Editar
+
+  </button>
+
+</div>
+
               </div>
+              
 
             ))}
 
@@ -272,7 +497,7 @@ export default function SuministroPage() {
             {materiales.map((material, index) => (
 
               <div
-                key={index}
+                key={material.id}
                 className="bg-[#07111f] border border-white/5 rounded-3xl p-5"
               >
 
@@ -303,6 +528,41 @@ export default function SuministroPage() {
                     )}
 
                   </div>
+
+                  <div>
+
+  <button
+    onClick={() => {
+
+      setEditandoId(material.id);
+
+      setNombre(material.nombre);
+
+      setUnidad(material.unidad);
+
+      setStockActual(
+        String(material.stock)
+      );
+
+      setStockMinimo(
+        String(material.minimo)
+      );
+
+      setStockIdeal(
+        String(material.objetivo)
+      );
+
+      setModalNuevo(true);
+
+    }}
+    className="text-cyan-400 hover:text-cyan-300"
+  >
+
+    ✏️ Editar
+
+  </button>
+
+</div>
 
                 </div>
 
@@ -339,76 +599,77 @@ export default function SuministroPage() {
         </div>
 
         {/* Movimientos */}
-        <div className="bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden">
+        <div className="bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden mt-8">
 
-          <div className="px-6 py-5 border-b border-white/5">
+  <div className="px-6 py-5 border-b border-white/5">
 
-            <h2 className="text-2xl font-semibold text-white">
-              Movimientos recientes
-            </h2>
+    <h2 className="text-2xl font-semibold text-white">
+      Últimas compras
+    </h2>
 
-            <p className="text-zinc-500 text-sm mt-1">
-              Compras y consumos registrados
-            </p>
+  </div>
 
-          </div>
+  <div className="hidden md:block">
 
-          <div className="hidden md:block">
+    <div className="grid grid-cols-5 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
 
-            <div className="grid grid-cols-5 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
+      <div>Fecha</div>
+      <div>Material</div>
+      <div>Cantidad</div>
+      <div>Proveedor</div>
+      <div>Total</div>
 
-              <div>Fecha</div>
-              <div>Material</div>
-              <div>Tipo</div>
-              <div>Cantidad</div>
-              <div>Detalle</div>
+    </div>
 
-            </div>
+    {compras.map((item) => (
 
-            {movimientos.map((movimiento, index) => (
+      <div
+        key={item.id}
+        className="grid grid-cols-5 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
+      >
 
-              <div
-                key={index}
-                className="grid grid-cols-5 px-6 py-5 border-b border-white/5"
-              >
+        <div className="text-white">
 
-                <div className="text-white">
-                  {movimiento.fecha}
-                </div>
+          {new Date(
+            item.created_at
+          ).toLocaleDateString("es-AR")}
 
-                <div className="text-white">
-                  {movimiento.material}
-                </div>
+        </div>
 
-                <div>
+        <div className="text-white">
 
-                  {movimiento.tipo === "Compra" && (
-                    <span className="text-emerald-400">
-                      Compra
-                    </span>
-                  )}
+          {item.suministros?.nombre}
 
-                  {movimiento.tipo === "Consumo" && (
-                    <span className="text-red-400">
-                      Consumo
-                    </span>
-                  )}
+        </div>
 
-                </div>
+        <div className="text-white">
 
-                <div className="text-white">
-                  {movimiento.cantidad}
-                </div>
+          {item.cantidad}
 
-                <div className="text-white">
-                  {movimiento.detalle}
-                </div>
+        </div>
 
-              </div>
+        <div className="text-white">
 
-            ))}
+          {item.proveedor || "-"}
 
-          </div>
+        </div>
+
+        <div className="text-white">
+
+          $
+          {Number(
+            item.monto_total || 0
+          ).toLocaleString("es-AR")}
+
+        </div>
+
+      </div>
+
+    ))}
+
+  </div>
+
+</div>
 
           {/* Mobile */}
           <div className="md:hidden space-y-4 p-4">
@@ -472,7 +733,337 @@ export default function SuministroPage() {
 
         </div>
 
+
+      {/* Modal nuevo suministro */}
+
+      {modalNuevo && (
+
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+
+    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-2xl">
+
+      <div className="p-6 border-b border-white/5">
+
+        <div className="flex items-center justify-between">
+
+          <h2 className="text-2xl font-bold text-white">
+            Nuevo suministro
+          </h2>
+
+          <button
+            onClick={() => setModalNuevo(false)}
+            className="text-zinc-400 hover:text-white text-3xl"
+          >
+            ×
+          </button>
+
+        </div>
+
       </div>
+
+      <div className="p-6 space-y-5">
+
+        <input
+          value={nombre}
+          onChange={(e) =>
+            setNombre(e.target.value)
+          }
+          placeholder="Nombre"
+          className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+        />
+
+        <input
+          value={unidad}
+          onChange={(e) =>
+            setUnidad(e.target.value)
+          }
+          placeholder="Unidad (Kg, Bolsas, m3)"
+          className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+        />
+
+        <div className="grid grid-cols-3 gap-4">
+
+          <input
+            type="number"
+            value={stockActual}
+            onChange={(e) =>
+              setStockActual(e.target.value)
+            }
+            placeholder="Stock actual"
+            className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+          />
+
+          <input
+            type="number"
+            value={stockMinimo}
+            onChange={(e) =>
+              setStockMinimo(e.target.value)
+            }
+            placeholder="Stock mínimo"
+            className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+          />
+
+          <input
+            type="number"
+            value={stockIdeal}
+            onChange={(e) =>
+              setStockIdeal(e.target.value)
+            }
+            placeholder="Stock ideal"
+            className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+          />
+
+        </div>
+
+        <div className="flex justify-end gap-4">
+
+          <button
+            onClick={() =>
+              setModalNuevo(false)
+            }
+            className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5 text-white"
+          >
+            Cancelar
+          </button>
+
+          <button
+            onClick={guardarSuministro}
+            className="bg-blue-500 hover:bg-blue-400 transition px-5 py-3 rounded-2xl text-black font-semibold"
+          >
+            Guardar
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+)}
+
+{/* Modal nueva compra */}
+
+{modalCompra && (
+
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+
+    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-3xl">
+
+      <div className="p-6 border-b border-white/5">
+
+        <div className="flex items-center justify-between">
+
+          <h2 className="text-2xl font-bold text-white">
+            Registrar compra
+          </h2>
+
+          <button
+            onClick={() => setModalCompra(false)}
+            className="text-zinc-400 hover:text-white text-3xl"
+          >
+            ×
+          </button>
+
+        </div>
+
+      </div>
+
+      <div className="p-6 space-y-5">
+
+        <div className="grid grid-cols-2 gap-4">
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Fecha
+            </label>
+
+            <input
+              type="date"
+              value={fechaCompra}
+              onChange={(e) =>
+                setFechaCompra(e.target.value)
+              }
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            />
+
+          </div>
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Materia prima
+            </label>
+
+            <select
+              value={suministroCompra}
+              onChange={(e) =>
+                setSuministroCompra(
+                  e.target.value
+                )
+              }
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            >
+
+              <option value="">
+                Seleccionar
+              </option>
+
+              {materiales.map((item) => (
+
+                <option
+                  key={item.id}
+                  value={item.id}
+                >
+
+                  {item.nombre}
+
+                </option>
+
+              ))}
+
+            </select>
+
+          </div>
+
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Cantidad
+            </label>
+
+            <input
+              type="number"
+              value={cantidadCompra}
+              onChange={(e) =>
+                setCantidadCompra(
+                  e.target.value
+                )
+              }
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            />
+
+          </div>
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Proveedor
+            </label>
+
+            <input
+              type="text"
+              value={proveedorCompra}
+              onChange={(e) =>
+                setProveedorCompra(
+                  e.target.value
+                )
+              }
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            />
+
+          </div>
+
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Monto total
+            </label>
+
+            <input
+              type="number"
+              value={montoTotal}
+              onChange={(e) =>
+                setMontoTotal(
+                  e.target.value
+                )
+              }
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            />
+
+          </div>
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Monto abonado
+            </label>
+
+            <input
+              type="number"
+              value={montoAbonado}
+              onChange={(e) =>
+                setMontoAbonado(
+                  e.target.value
+                )
+              }
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            />
+
+          </div>
+
+        </div>
+
+        <div>
+
+          <label className="text-sm text-zinc-400 block mb-2">
+            Observación
+          </label>
+
+          <textarea
+            value={observacionCompra}
+            onChange={(e) =>
+              setObservacionCompra(
+                e.target.value
+              )
+            }
+            rows={3}
+            className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+          />
+
+        </div>
+
+        <div className="flex justify-end gap-4">
+
+          <button
+            onClick={() =>
+              setModalCompra(false)
+            }
+            className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5 text-white"
+          >
+
+            Cancelar
+
+          </button>
+
+          <button
+            onClick={guardarCompra}
+            className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl text-black font-semibold"
+          >
+
+            Guardar compra
+
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+)}
 
     </>
 
