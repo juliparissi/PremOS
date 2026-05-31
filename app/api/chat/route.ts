@@ -211,6 +211,43 @@ if (
         .select("*");
 
     /* =========================
+   PRODUCTOS
+========================= */
+
+const { data: productos } =
+  await supabase
+    .from("productos")
+    .select("*");
+
+    /* =========================
+   STOCK
+========================= */
+
+const { data: stock } =
+  await supabase
+    .from("stock")
+    .select("*");
+
+/* =========================
+   SUMINISTROS
+========================= */
+
+const { data: suministros } =
+  await supabase
+    .from("suministros")
+    .select("*");
+
+/* =========================
+   PRODUCCIÓN
+========================= */
+
+const { data: produccion } =
+  await supabase
+    .from("produccion")
+    .select("*");
+
+
+    /* =========================
        OPENAI
     ========================== */
 
@@ -237,6 +274,18 @@ ${JSON.stringify(pedidos)}
 
 ECONOMÍA:
 ${JSON.stringify(economia)}
+
+STOCK:
+${JSON.stringify(stock)}
+
+SUMINISTROS:
+${JSON.stringify(suministros)}
+
+PRODUCCIÓN:
+${JSON.stringify(produccion)}
+
+PRODUCTOS:
+${JSON.stringify(productos)}
 
 Sos el asistente inteligente de PremOS.
 
