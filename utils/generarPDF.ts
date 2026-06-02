@@ -1,5 +1,102 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getEmpresaConfig } from "../lib/empresa";
+
+type ReportePDF = {
+  tipo?: "completo" | "finanzas" | "clientes" | "presupuestos" | "ventas";
+  desde: string;
+  hasta: string;
+  ingresos: number;
+  gastos: number;
+  utilidad: number;
+  ventasGeneradas: number;
+  ventasCobradas: number;
+  ventasPendientes: number;
+  pedidos: number;
+  clientesActivos: number;
+  presupuestosGenerados: number;
+  presupuestosAceptados: number;
+  totalPresupuestos: number;
+  tasaConversion: number;
+  mejoresClientes?: Array<{
+    cliente: string;
+    pedidos: number;
+    total: number;
+  }>;
+  movimientos: Array<{
+    fecha: string;
+    tipo: string;
+    concepto: string;
+    total: number;
+    abonado: number;
+    pendiente: number;
+  }>;
+};
+
+const reporteTitulos = {
+  completo: "REPORTE GENERAL",
+  finanzas: "REPORTE INGRESOS Y GASTOS",
+  clientes: "REPORTE MEJORES CLIENTES",
+  presupuestos: "REPORTE PRESUPUESTOS",
+  ventas: "REPORTE VENTAS Y COBRANZA",
+};
+
+function formatMoney(value: number) {
+  return `$${Number(value || 0).toLocaleString("es-AR")}`;
+}
+
+function formatDate(value: string) {
+  if (!value) return "-";
+
+  return value.split("T")[0].split("-").reverse().join("/");
+}
+
+function agregarEncabezado(
+  doc: jsPDF,
+  titulo: string,
+  numero: string,
+  fecha: string
+) {
+  const empresaConfig = getEmpresaConfig();
+  const logo = new Image();
+  logo.src = empresaConfig.logo;
+
+  doc.addImage(
+    logo,
+    "PNG",
+    10,
+    28,
+    35,
+    20
+  );
+
+  doc.setFontSize(10);
+  doc.text(empresaConfig.direccion, 70, 32);
+  doc.text(empresaConfig.localidad, 60, 39);
+  doc.text(empresaConfig.telefono, 77, 46);
+  doc.text(empresaConfig.email, 63, 53);
+
+  doc.roundedRect(125, 26, 70, 35, 3, 3);
+
+  const titleMaxWidth = 54;
+  let titleFontSize = 12;
+
+  doc.setFontSize(titleFontSize);
+
+  while (
+    doc.getTextWidth(titulo) > titleMaxWidth &&
+    titleFontSize > 8
+  ) {
+    titleFontSize -= 1;
+    doc.setFontSize(titleFontSize);
+  }
+
+  doc.text(titulo, 135, 35);
+
+  doc.setFontSize(12);
+  doc.text(`FECHA: ${fecha}`, 135, 45);
+  doc.text(`FOLIO: ${numero}`, 135, 55);
+}
 
 export function generarPDFPresupuesto({
   tipoDocumento,
@@ -18,7 +115,6 @@ export function generarPDFPresupuesto({
 }: any) {
 
   const doc = new jsPDF();
-  const logo = new Image();
   if (tipoDocumento === "NOTA DE VENTA") {
 
   doc.setTextColor(200);
@@ -58,41 +154,12 @@ export function generarPDFPresupuesto({
 
 }
 
-logo.src = "/logo.png";
-
-doc.addImage(
-  logo,
-  "PNG",
-  10,
-  30,
-  35,
-  20
-);
-
-// EMPRESA
-doc.setFontSize(10);
-
-doc.text("GENERAL GUIDO 551", 70, 32);
-doc.text("C.P. 1629, PILAR - BUENOS AIRES", 60, 39);
-doc.text("1133172541", 77, 46);
-doc.text("ventas@baldosasduramax.com", 63, 53);
-
-// TITULO
-// doc.setFontSize(24);
-// doc.text("PRESUPUESTO", 130, 22);
-
-  // FECHA Y FOLIO
-  doc.setFontSize(12);
-
-  doc.roundedRect(125, 26, 70, 35, 3, 3);
-  
-  doc.text(
+agregarEncabezado(
+  doc,
   tipoDocumento || "PRESUPUESTO",
-  135,
-  35
+  numero,
+  fecha
 );
-  doc.text(`FECHA: ${fecha}`, 135, 45);
-  doc.text(`FOLIO: ${numero}`, 135, 55);
 
   // CLIENTE
   doc.setFontSize(14);
@@ -165,4 +232,145 @@ doc.setFontSize(11);
   // DESCARGAR
   doc.save(`${numero}.pdf`);
 
+}
+
+export function generarPDFReporte(data: ReportePDF) {
+  const doc = new jsPDF();
+  const fecha = new Date().toLocaleDateString("es-AR");
+  const tipo = data.tipo || "completo";
+  const folio = `REP-${new Date()
+    .toISOString()
+    .slice(0, 10)
+    .replaceAll("-", "")}`;
+
+  agregarEncabezado(doc, reporteTitulos[tipo], folio, fecha);
+
+  doc.setFontSize(14);
+  doc.text("PERIODO DEL REPORTE", 20, 78);
+  doc.roundedRect(15, 72, 180, 24, 3, 3);
+
+  doc.setFontSize(11);
+  doc.text(`DESDE: ${formatDate(data.desde)}`, 20, 88);
+  doc.text(`HASTA: ${formatDate(data.hasta)}`, 80, 88);
+
+  const resumenGeneral = [
+    ["Ingresos cobrados", formatMoney(data.ingresos)],
+    ["Gastos pagados", formatMoney(data.gastos)],
+    ["Resultado", formatMoney(data.utilidad)],
+    ["Ventas generadas", formatMoney(data.ventasGeneradas)],
+    ["Ventas cobradas", formatMoney(data.ventasCobradas)],
+    ["Saldo por cobrar", formatMoney(data.ventasPendientes)],
+    ["Pedidos", data.pedidos.toLocaleString("es-AR")],
+    ["Clientes activos", data.clientesActivos.toLocaleString("es-AR")],
+    ["Presupuestos generados", data.presupuestosGenerados.toLocaleString("es-AR")],
+    ["Presupuestos aceptados", data.presupuestosAceptados.toLocaleString("es-AR")],
+    ["Total cotizado", formatMoney(data.totalPresupuestos)],
+    ["Conversion", `${data.tasaConversion.toFixed(0)}%`],
+  ];
+
+  const resumenPorTipo = {
+    completo: resumenGeneral,
+    finanzas: [
+      ["Ingresos cobrados", formatMoney(data.ingresos)],
+      ["Gastos pagados", formatMoney(data.gastos)],
+      ["Resultado", formatMoney(data.utilidad)],
+    ],
+    clientes: [
+      ["Clientes activos", data.clientesActivos.toLocaleString("es-AR")],
+      ["Pedidos del periodo", data.pedidos.toLocaleString("es-AR")],
+      ["Ventas generadas", formatMoney(data.ventasGeneradas)],
+    ],
+    presupuestos: [
+      ["Presupuestos generados", data.presupuestosGenerados.toLocaleString("es-AR")],
+      ["Presupuestos aceptados", data.presupuestosAceptados.toLocaleString("es-AR")],
+      ["Total cotizado", formatMoney(data.totalPresupuestos)],
+      ["Conversion", `${data.tasaConversion.toFixed(0)}%`],
+    ],
+    ventas: [
+      ["Ventas generadas", formatMoney(data.ventasGeneradas)],
+      ["Ventas cobradas", formatMoney(data.ventasCobradas)],
+      ["Saldo por cobrar", formatMoney(data.ventasPendientes)],
+      ["Pedidos", data.pedidos.toLocaleString("es-AR")],
+    ],
+  };
+
+  autoTable(doc, {
+    startY: 108,
+    head: [["INDICADOR", "VALOR"]],
+    body: resumenPorTipo[tipo],
+    styles: {
+      fontSize: 10,
+    },
+    headStyles: {
+      fillColor: [7, 17, 31],
+    },
+  });
+
+  const detalleStartY = (doc as any).lastAutoTable.finalY + 14;
+
+  if (tipo === "clientes") {
+    doc.setFontSize(14);
+    doc.text("MEJORES CLIENTES", 15, detalleStartY);
+
+    autoTable(doc, {
+      startY: detalleStartY + 8,
+      head: [["CLIENTE", "PEDIDOS", "TOTAL"]],
+      body: (data.mejoresClientes || []).map((cliente) => [
+        cliente.cliente,
+        cliente.pedidos.toLocaleString("es-AR"),
+        formatMoney(cliente.total),
+      ]),
+      styles: {
+        fontSize: 9,
+      },
+      headStyles: {
+        fillColor: [7, 17, 31],
+      },
+    });
+
+    doc.save(`${folio}-clientes.pdf`);
+    return;
+  }
+
+  doc.setFontSize(14);
+  doc.text(
+    tipo === "ventas"
+      ? "DETALLE DE COBRANZA"
+      : tipo === "presupuestos"
+      ? "RESUMEN DE PRESUPUESTOS"
+      : "DETALLE FINANCIERO",
+    15,
+    detalleStartY
+  );
+
+  autoTable(doc, {
+    startY: detalleStartY + 8,
+    head: [["FECHA", "TIPO", "CONCEPTO", "TOTAL", "ABONADO", "PENDIENTE"]],
+    body: data.movimientos
+      .filter((movimiento) => {
+        if (tipo === "finanzas") return true;
+        if (tipo === "ventas") {
+          return movimiento.tipo.toLowerCase() === "ingreso";
+        }
+        if (tipo === "presupuestos") return false;
+        return true;
+      })
+      .slice(0, 40)
+      .map((movimiento) => [
+      formatDate(movimiento.fecha),
+      movimiento.tipo,
+      movimiento.concepto,
+      formatMoney(movimiento.total),
+      formatMoney(movimiento.abonado),
+      formatMoney(movimiento.pendiente),
+    ]),
+    styles: {
+      fontSize: 8,
+    },
+    headStyles: {
+      fillColor: [7, 17, 31],
+    },
+  });
+
+  doc.save(`${folio}-${tipo}.pdf`);
 }

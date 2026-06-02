@@ -217,6 +217,23 @@ async function guardarNota() {
 
 }
 
+async function eliminarNota(id: string) {
+
+  const confirmar = confirm(
+    "¿Querés eliminar esta nota?"
+  );
+
+  if (!confirmar) return;
+
+  await supabase
+    .from("notas_rapidas")
+    .delete()
+    .eq("id", id);
+
+  cargarNotas();
+
+}
+
   useEffect(() => {
 
     cargarResumen();
@@ -513,7 +530,7 @@ async function guardarNota() {
 
         <div
           key={nota.id}
-          className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3"
+          className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 flex items-start justify-between gap-3"
         >
 
           <p className="text-sm">
@@ -521,6 +538,16 @@ async function guardarNota() {
             {nota.nota}
 
           </p>
+
+          <button
+            onClick={() =>
+              eliminarNota(nota.id)
+            }
+            className="shrink-0 w-7 h-7 rounded-full bg-white/5 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition flex items-center justify-center leading-none"
+            aria-label="Eliminar nota"
+          >
+            ×
+          </button>
 
         </div>
 
@@ -569,8 +596,18 @@ async function guardarNota() {
 
           <div
             key={nota.id}
-            className="bg-[#07111f] border border-white/5 rounded-2xl p-5"
+            className="bg-[#07111f] border border-white/5 rounded-2xl p-5 relative pr-14"
           >
+
+            <button
+              onClick={() =>
+                eliminarNota(nota.id)
+              }
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition flex items-center justify-center text-xl leading-none"
+              aria-label="Eliminar nota"
+            >
+              ×
+            </button>
 
             <p className="text-sm text-zinc-500 mb-2">
 
