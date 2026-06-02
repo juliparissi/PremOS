@@ -203,6 +203,27 @@ function isInsideRange(value: string | null, desde: string, hasta: string) {
   return date >= desde && date <= hasta;
 }
 
+function movimientoPerteneceAPedidoVigente(
+  concepto: string | null | undefined,
+  pedidosExistentes: Set<string>
+) {
+  if (!concepto) return true;
+
+  const prefijosPedido = [
+    "Pago pedido ",
+    "Entrega pedido ",
+    "Pago venta directa ",
+  ];
+
+  const prefijo = prefijosPedido.find((item) => concepto.startsWith(item));
+
+  if (!prefijo) return true;
+
+  const numeroPedido = concepto.replace(prefijo, "").trim();
+
+  return pedidosExistentes.has(numeroPedido);
+}
+
 function productName(item: {
   producto?: string | null;
   modelo?: string | null;
@@ -396,9 +417,15 @@ export default function ReportesPage() {
     return new Map(clientes.map((cliente) => [cliente.id, cliente.nombre]));
   }, [clientes]);
 
+  const numerosPedidosExistentes = useMemo(() => {
+    return new Set(pedidos.map((pedido) => pedido.numero));
+  }, [pedidos]);
+
   const pedidosFiltrados = useMemo(() => {
-    return pedidos.filter((pedido) =>
-      isInsideRange(pedido.created_at || pedido.fecha_entrega, desde, hasta)
+    return pedidos.filter(
+      (pedido) =>
+        pedido.estado !== "Cancelado" &&
+        isInsideRange(pedido.created_at || pedido.fecha_entrega, desde, hasta)
     );
   }, [pedidos, desde, hasta]);
 
@@ -417,10 +444,14 @@ export default function ReportesPage() {
   }, [presupuestos, desde, hasta]);
 
   const movimientosFiltrados = useMemo(() => {
-    return movimientos.filter((movimiento) =>
-      isInsideRange(movimiento.fecha, desde, hasta)
+    return movimientos.filter(
+      (movimiento) =>
+        movimientoPerteneceAPedidoVigente(
+          movimiento.concepto,
+          numerosPedidosExistentes
+        ) && isInsideRange(movimiento.fecha, desde, hasta)
     );
-  }, [movimientos, desde, hasta]);
+  }, [movimientos, numerosPedidosExistentes, desde, hasta]);
 
   const produccionesFiltradas = useMemo(() => {
     return producciones.filter((produccion) =>
