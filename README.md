@@ -1,3 +1,34 @@
+# Duramax ERP
+
+Sistema de gestión integral para fábrica de baldosas y premoldeados adaptable.
+ Nace de la necesidad de tener un sistema que cubra las necesidades de una pequeña empresa familiar, donde los sistemas tradicionales no se podian amoldar o bien eran muy caros. Es por eso que con ayuda de IA y conocimientos en programacion, realizamos este desarrollo a medida, conociendo el negocio y cada funcionamiento del mismo. 
+
+## Módulos
+
+* Producción
+* Stock
+* Suministros
+* Economía
+* Pedidos
+* Asistente IA
+* Presupuestos
+* Reportes
+* Clientes
+* Productos
+
+## Autor
+
+Julian Parissi
+
+## Año
+
+2026
+
+## INSTALACION
+
+Se debe correr bajo node.js 
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

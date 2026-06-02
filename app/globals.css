@@ -5,6 +5,16 @@
   --foreground: #171717;
 }
 
+:root[data-theme="dark"] {
+  --background: #07111f;
+  --foreground: #ffffff;
+}
+
+:root[data-theme="light"] {
+  --background: #f4f7fb;
+  --foreground: #0f172a;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -58,4 +68,50 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #334155;
+}
+
+:root[data-theme="light"] body,
+:root[data-theme="light"] .bg-\[\#07111f\],
+:root[data-theme="light"] .bg-\[\#050b14\] {
+  background: #f4f7fb !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] .bg-\[\#0b1727\],
+:root[data-theme="light"] .bg-\[\#081220\],
+:root[data-theme="light"] .bg-\[\#081528\],
+:root[data-theme="light"] .bg-\[\#07111f\]\/80 {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] .text-white,
+:root[data-theme="light"] .text-zinc-300 {
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] .text-zinc-400,
+:root[data-theme="light"] .text-zinc-500 {
+  color: #64748b !important;
+}
+
+:root[data-theme="light"] .border-white\/5,
+:root[data-theme="light"] .border-white\/10 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+:root[data-theme="light"] .bg-white\/5 {
+  background: rgba(15, 23, 42, 0.04) !important;
+}
+
+:root[data-theme="light"] .hover\:bg-white\/5:hover,
+:root[data-theme="light"] .hover\:bg-white\/10:hover {
+  background: rgba(15, 23, 42, 0.08) !important;
+}
+
+:root[data-theme="light"] input,
+:root[data-theme="light"] textarea,
+:root[data-theme="light"] select {
+  color: #0f172a !important;
+  background: #ffffff !important;
 }

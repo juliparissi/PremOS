@@ -18,6 +18,8 @@ type Pedido = {
   saldo_restante: number;
   observaciones?: string;
   fecha_inicio_produccion?: string;
+  con_factura?: boolean;
+  numero_factura?: string;
 };
 
 type Cliente = {
@@ -61,6 +63,8 @@ export default function PedidosPage() {
   const [fechaEntrega, setFechaEntrega] = useState("");
   const [modalHistorialPagos, setModalHistorialPagos] = useState(false);
   const [modalEstado, setModalEstado] = useState(false);
+  const [modalFactura, setModalFactura] = useState(false);
+  const [numeroFactura, setNumeroFactura] = useState("");
 
   const [montoPago, setMontoPago] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
@@ -345,6 +349,75 @@ if (saldoRestante > 0) {
 
   cargarPedidos();
 
+}
+
+function abrirFactura() {
+  setNumeroFactura(
+    pedidoSeleccionado?.numero_factura || ""
+  );
+
+  setModalFactura(true);
+}
+
+async function guardarFactura() {
+  if (!pedidoSeleccionado) return;
+
+  const numero = numeroFactura.trim();
+
+  const { error } = await supabase
+    .from("pedidos")
+    .update({
+      con_factura: Boolean(numero),
+      numero_factura: numero || null,
+    })
+    .eq("id", pedidoSeleccionado.id);
+
+  if (error) {
+    alert(
+      "No se pudo guardar la factura. Revisá que existan las columnas con_factura y numero_factura en Supabase."
+    );
+
+    return;
+  }
+
+  setPedidoSeleccionado({
+    ...pedidoSeleccionado,
+    con_factura: Boolean(numero),
+    numero_factura: numero || "",
+  });
+
+  setModalFactura(false);
+  cargarPedidos();
+}
+
+async function quitarFactura() {
+  if (!pedidoSeleccionado) return;
+
+  const { error } = await supabase
+    .from("pedidos")
+    .update({
+      con_factura: false,
+      numero_factura: null,
+    })
+    .eq("id", pedidoSeleccionado.id);
+
+  if (error) {
+    alert(
+      "No se pudo quitar la factura. Revisá que existan las columnas con_factura y numero_factura en Supabase."
+    );
+
+    return;
+  }
+
+  setNumeroFactura("");
+  setPedidoSeleccionado({
+    ...pedidoSeleccionado,
+    con_factura: false,
+    numero_factura: "",
+  });
+
+  setModalFactura(false);
+  cargarPedidos();
 }
 
 const pedidosFiltrados =
@@ -999,7 +1072,9 @@ const pedidosPaginados =
             </div>
 
 {/* Fecha entrega */}
-<div className="bg-[#07111f] border border-white/5 rounded-3xl p-6 mb-8">
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+<div className="bg-[#07111f] border border-white/5 rounded-3xl p-6">
 
   <p className="text-zinc-500 text-sm">
     Fecha de entrega programada
@@ -1013,6 +1088,49 @@ const pedidosPaginados =
       .join("/")}
 
   </h3>
+
+</div>
+
+<div className="bg-[#07111f] border border-white/5 rounded-3xl p-6">
+
+  <div className="flex items-start justify-between gap-4">
+
+    <div>
+
+      <p className="text-zinc-500 text-sm">
+        Factura
+      </p>
+
+      <h3
+        className={`text-2xl font-bold mt-3 ${
+          pedidoSeleccionado?.con_factura
+            ? "text-emerald-400"
+            : "text-zinc-300"
+        }`}
+      >
+        {pedidoSeleccionado?.con_factura
+          ? "Con factura"
+          : "Sin factura"}
+      </h3>
+
+      <p className="text-zinc-500 text-sm mt-2">
+        {pedidoSeleccionado?.numero_factura
+          ? `N° ${pedidoSeleccionado.numero_factura}`
+          : "No hay numero cargado"}
+      </p>
+
+    </div>
+
+    <input
+      type="checkbox"
+      checked={Boolean(pedidoSeleccionado?.con_factura)}
+      onChange={abrirFactura}
+      className="mt-1 h-5 w-5 accent-emerald-500"
+    />
+
+  </div>
+
+</div>
 
 </div>
 
@@ -1045,6 +1163,13 @@ const pedidosPaginados =
   className="bg-white/5 hover:bg-white/10 transition px-4 py-2 rounded-xl border border-white/5 text-sm"
 >
   Cambiar estado
+</button>
+
+  <button
+  onClick={abrirFactura}
+  className="bg-white/5 hover:bg-white/10 transition px-4 py-2 rounded-xl border border-white/5 text-sm"
+>
+  Factura
 </button>
 
   <button
@@ -1470,6 +1595,74 @@ setModalEntregaFinal(false);
           </div>
 
         ))}
+
+      </div>
+
+    </div>
+
+  </div>
+
+)}
+
+{/* Modal factura */}
+{modalFactura && (
+
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+
+    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-xl p-6 md:p-8 relative">
+
+      <button
+        onClick={() => setModalFactura(false)}
+        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white transition flex items-center justify-center text-2xl leading-none"
+        aria-label="Cerrar"
+      >
+        ×
+      </button>
+
+      <div className="mb-6 pr-10">
+
+        <h2 className="text-3xl font-bold">
+          Factura del pedido
+        </h2>
+
+        <p className="text-zinc-500 mt-1">
+          Cargar o editar el número de factura
+        </p>
+
+      </div>
+
+      <div>
+
+        <label className="text-zinc-500 text-sm">
+          Número de factura
+        </label>
+
+        <input
+          value={numeroFactura}
+          onChange={(event) =>
+            setNumeroFactura(event.target.value)
+          }
+          placeholder="Ej: A-0001-00001234"
+          className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+        />
+
+      </div>
+
+      <div className="flex justify-end gap-3 mt-8">
+
+        <button
+          onClick={quitarFactura}
+          className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5"
+        >
+          Sin factura
+        </button>
+
+        <button
+          onClick={guardarFactura}
+          className="bg-emerald-500 hover:bg-emerald-400 transition px-5 py-3 rounded-2xl font-medium"
+        >
+          Guardar factura
+        </button>
 
       </div>
 

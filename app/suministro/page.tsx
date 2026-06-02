@@ -43,6 +43,13 @@ const [stockIdeal, setStockIdeal] = useState("");
 
 const [compras, setCompras] = useState<any[]>([]);
 
+function formatearCantidad(value: number | string) {
+  return Number(value || 0).toLocaleString("es-AR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  });
+}
+
 async function cargarSuministros() {
 
   const { data, error } = await supabase
@@ -416,15 +423,15 @@ async function guardarCompra() {
                 </div>
 
                 <div className="text-white">
-                  {material.stock}
+                  {formatearCantidad(material.stock)}
                 </div>
 
                 <div className="text-white">
-                  {material.minimo}
+                  {formatearCantidad(material.minimo)}
                 </div>
 
                 <div className="text-white">
-                  {material.objetivo}
+                  {formatearCantidad(material.objetivo)}
                 </div>
 
                 <div>
@@ -575,17 +582,17 @@ async function guardarCompra() {
 
                   <div className="flex justify-between text-white">
                     <span>Stock actual</span>
-                    <span>{material.stock}</span>
+                    <span>{formatearCantidad(material.stock)}</span>
                   </div>
 
                   <div className="flex justify-between text-white">
                     <span>Mínimo</span>
-                    <span>{material.minimo}</span>
+                    <span>{formatearCantidad(material.minimo)}</span>
                   </div>
 
                   <div className="flex justify-between text-white">
                     <span>Objetivo</span>
-                    <span>{material.objetivo}</span>
+                    <span>{formatearCantidad(material.objetivo)}</span>
                   </div>
 
                 </div>

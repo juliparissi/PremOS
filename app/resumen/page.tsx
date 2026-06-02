@@ -9,6 +9,9 @@ export default function ResumenPage() {
   const [modalNotas, setModalNotas] =
   useState(false);
 
+  const [modalFiltroFinanciero, setModalFiltroFinanciero] =
+    useState(false);
+
   const [nota, setNota] = useState("");
 
   const [notas, setNotas] =
@@ -36,6 +39,42 @@ export default function ResumenPage() {
 
   const [clientesConDeuda, setClientesConDeuda] =
     useState(0);
+
+  const [filtroActivo, setFiltroActivo] =
+    useState<"ingresos" | "gastos">("ingresos");
+  const [filtroIngresosDesde, setFiltroIngresosDesde] = useState("");
+  const [filtroIngresosHasta, setFiltroIngresosHasta] = useState("");
+  const [filtroGastosDesde, setFiltroGastosDesde] = useState("");
+  const [filtroGastosHasta, setFiltroGastosHasta] = useState("");
+
+  function estaEnRango(
+    fecha: string | null | undefined,
+    desde: string,
+    hasta: string
+  ) {
+    if (!desde && !hasta) return true;
+    if (!fecha) return false;
+
+    const fechaBase = fecha.split("T")[0];
+
+    if (desde && fechaBase < desde) return false;
+    if (hasta && fechaBase > hasta) return false;
+
+    return true;
+  }
+
+  function textoFiltroFinanciero(desdeFiltro: string, hastaFiltro: string) {
+    if (!desdeFiltro && !hastaFiltro) return "Total general";
+
+    const desde = desdeFiltro
+      ? desdeFiltro.split("-").reverse().join("/")
+      : "Inicio";
+    const hasta = hastaFiltro
+      ? hastaFiltro.split("-").reverse().join("/")
+      : "Hoy";
+
+    return `${desde} - ${hasta}`;
+  }
 
   async function cargarResumen() {
 
@@ -97,21 +136,6 @@ export default function ResumenPage() {
         produccion.length
       );
 
-      /* Dinero ingresado */
-      const ingresado =
-        pedidosData.reduce(
-          (acc, pedido) =>
-            acc +
-            Number(
-              pedido.saldo_abonado || 0
-            ),
-          0
-        );
-
-      setDineroIngresado(
-        ingresado
-      );
-
       /* Saldo pendiente */
       const pendiente =
         pedidosData.reduce(
@@ -158,12 +182,50 @@ export default function ResumenPage() {
 
     if (economiaData) {
 
-      const gastos =
-        economiaData
+      const movimientosIngresosFiltrados =
+        economiaData.filter((movimiento) =>
+          estaEnRango(
+            movimiento.fecha ||
+              movimiento.created_at,
+            filtroIngresosDesde,
+            filtroIngresosHasta
+          )
+        );
+
+      const movimientosGastosFiltrados =
+        economiaData.filter((movimiento) =>
+          estaEnRango(
+            movimiento.fecha ||
+              movimiento.created_at,
+            filtroGastosDesde,
+            filtroGastosHasta
+          )
+        );
+
+      const ingresado =
+        movimientosIngresosFiltrados
           .filter(
             (movimiento) =>
-              movimiento.tipo ===
-              "Gasto"
+              movimiento.tipo?.toLowerCase() ===
+              "ingreso"
+          )
+          .reduce(
+            (acc, movimiento) =>
+              acc +
+              Number(
+                movimiento.monto_abonado ||
+                  movimiento.monto_total ||
+                  0
+              ),
+            0
+          );
+
+      const gastos =
+        movimientosGastosFiltrados
+          .filter(
+            (movimiento) =>
+              movimiento.tipo?.toLowerCase() ===
+              "gasto"
           )
           .reduce(
             (acc, movimiento) =>
@@ -173,6 +235,10 @@ export default function ResumenPage() {
               ),
             0
           );
+
+      setDineroIngresado(
+        ingresado
+      );
 
       setGastosTotales(
         gastos
@@ -217,13 +283,35 @@ async function guardarNota() {
 
 }
 
+async function eliminarNota(id: string) {
+
+  const confirmar = confirm(
+    "¿Querés eliminar esta nota?"
+  );
+
+  if (!confirmar) return;
+
+  await supabase
+    .from("notas_rapidas")
+    .delete()
+    .eq("id", id);
+
+  cargarNotas();
+
+}
+
   useEffect(() => {
 
     cargarResumen();
 
     cargarNotas();
 
-  }, []);
+  }, [
+    filtroIngresosDesde,
+    filtroIngresosHasta,
+    filtroGastosDesde,
+    filtroGastosHasta,
+  ]);
 
   return (
 
@@ -311,9 +399,40 @@ async function guardarNota() {
         {/* Dinero ingresado */}
         <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">
 
-          <p className="text-zinc-500">
-            Dinero ingresado
-          </p>
+          <div className="flex items-start justify-between gap-3">
+
+            <div>
+
+              <p className="text-zinc-500">
+                Dinero ingresado
+              </p>
+
+              <p className="text-xs text-zinc-600 mt-1">
+                {textoFiltroFinanciero(
+                  filtroIngresosDesde,
+                  filtroIngresosHasta
+                )}
+              </p>
+
+            </div>
+
+            <button
+              onClick={() => {
+                setFiltroActivo("ingresos");
+                setModalFiltroFinanciero(true);
+              }}
+              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-cyan-300 transition flex items-center justify-center"
+              aria-label="Filtrar dinero ingresado por fecha"
+              title="Filtrar por fecha"
+            >
+              <span className="w-4 h-4 rounded-[3px] border border-cyan-300 relative block">
+                <span className="absolute left-0 right-0 top-[3px] border-t border-cyan-300" />
+                <span className="absolute left-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
+                <span className="absolute right-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
+              </span>
+            </button>
+
+          </div>
 
           <h2 className="text-3xl font-bold mt-4 text-emerald-400">
 
@@ -351,9 +470,40 @@ async function guardarNota() {
         {/* Gastos */}
         <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">
 
-          <p className="text-zinc-500">
-            Gastos registrados
-          </p>
+          <div className="flex items-start justify-between gap-3">
+
+            <div>
+
+              <p className="text-zinc-500">
+                Gastos registrados
+              </p>
+
+              <p className="text-xs text-zinc-600 mt-1">
+                {textoFiltroFinanciero(
+                  filtroGastosDesde,
+                  filtroGastosHasta
+                )}
+              </p>
+
+            </div>
+
+            <button
+              onClick={() => {
+                setFiltroActivo("gastos");
+                setModalFiltroFinanciero(true);
+              }}
+              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-cyan-300 transition flex items-center justify-center"
+              aria-label="Filtrar gastos registrados por fecha"
+              title="Filtrar por fecha"
+            >
+              <span className="w-4 h-4 rounded-[3px] border border-cyan-300 relative block">
+                <span className="absolute left-0 right-0 top-[3px] border-t border-cyan-300" />
+                <span className="absolute left-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
+                <span className="absolute right-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
+              </span>
+            </button>
+
+          </div>
 
           <h2 className="text-3xl font-bold mt-4 text-red-400">
 
@@ -513,7 +663,7 @@ async function guardarNota() {
 
         <div
           key={nota.id}
-          className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3"
+          className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 flex items-start justify-between gap-3"
         >
 
           <p className="text-sm">
@@ -521,6 +671,16 @@ async function guardarNota() {
             {nota.nota}
 
           </p>
+
+          <button
+            onClick={() =>
+              eliminarNota(nota.id)
+            }
+            className="shrink-0 w-7 h-7 rounded-full bg-white/5 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition flex items-center justify-center leading-none"
+            aria-label="Eliminar nota"
+          >
+            ×
+          </button>
 
         </div>
 
@@ -531,6 +691,125 @@ async function guardarNota() {
   </div>
 
 </div>
+
+{/* Modal filtro financiero */}
+{modalFiltroFinanciero && (
+
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+
+    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-xl p-8 relative">
+
+      <button
+        onClick={() =>
+          setModalFiltroFinanciero(false)
+        }
+        className="absolute top-6 right-6 text-zinc-400 hover:text-white transition text-3xl"
+      >
+        ×
+      </button>
+
+      <div className="mb-8">
+
+        <h2 className="text-3xl font-bold">
+          Filtrar {filtroActivo === "ingresos"
+            ? "dinero ingresado"
+            : "gastos registrados"}
+        </h2>
+
+        <p className="text-zinc-500 mt-1">
+          Rango independiente para este indicador
+        </p>
+
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <div>
+
+          <label className="text-sm text-zinc-400 block mb-2">
+            Desde
+          </label>
+
+          <input
+            type="date"
+            value={
+              filtroActivo === "ingresos"
+                ? filtroIngresosDesde
+                : filtroGastosDesde
+            }
+            onChange={(e) => {
+              if (filtroActivo === "ingresos") {
+                setFiltroIngresosDesde(e.target.value);
+              } else {
+                setFiltroGastosDesde(e.target.value);
+              }
+            }}
+            className="w-full h-[52px] bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+          />
+
+        </div>
+
+        <div>
+
+          <label className="text-sm text-zinc-400 block mb-2">
+            Hasta
+          </label>
+
+          <input
+            type="date"
+            value={
+              filtroActivo === "ingresos"
+                ? filtroIngresosHasta
+                : filtroGastosHasta
+            }
+            onChange={(e) => {
+              if (filtroActivo === "ingresos") {
+                setFiltroIngresosHasta(e.target.value);
+              } else {
+                setFiltroGastosHasta(e.target.value);
+              }
+            }}
+            className="w-full h-[52px] bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+          />
+
+        </div>
+
+      </div>
+
+      <div className="flex flex-col md:flex-row justify-end gap-4 mt-8">
+
+        <button
+          onClick={() => {
+            if (filtroActivo === "ingresos") {
+              setFiltroIngresosDesde("");
+              setFiltroIngresosHasta("");
+            } else {
+              setFiltroGastosDesde("");
+              setFiltroGastosHasta("");
+            }
+            setModalFiltroFinanciero(false);
+          }}
+          className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5 text-white"
+        >
+          Limpiar filtro
+        </button>
+
+        <button
+          onClick={() =>
+            setModalFiltroFinanciero(false)
+          }
+          className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl text-black font-semibold"
+        >
+          Aplicar filtro
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+)}
 
 {/* Modal notas */}
 {modalNotas && (
@@ -569,8 +848,18 @@ async function guardarNota() {
 
           <div
             key={nota.id}
-            className="bg-[#07111f] border border-white/5 rounded-2xl p-5"
+            className="bg-[#07111f] border border-white/5 rounded-2xl p-5 relative pr-14"
           >
+
+            <button
+              onClick={() =>
+                eliminarNota(nota.id)
+              }
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition flex items-center justify-center text-xl leading-none"
+              aria-label="Eliminar nota"
+            >
+              ×
+            </button>
 
             <p className="text-sm text-zinc-500 mb-2">
 
