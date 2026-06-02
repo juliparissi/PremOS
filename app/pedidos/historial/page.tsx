@@ -32,10 +32,7 @@ export default function HistorialPedidosPage() {
     const { data: pedidosData } = await supabase
       .from("pedidos")
       .select("*")
-      .in("estado", [
-        "Entregado",
-        "Cancelado",
-      ])
+      .eq("estado", "Entregado")
       .order("created_at", {
         ascending: false,
       });
@@ -136,7 +133,7 @@ const pedidosPaginados =
         </h1>
 
         <p className="text-zinc-500 mt-1">
-          Pedidos entregados y cancelados
+          Pedidos entregados
         </p>
 
       </div>

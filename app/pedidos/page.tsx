@@ -65,6 +65,7 @@ export default function PedidosPage() {
   const [modalEstado, setModalEstado] = useState(false);
   const [modalFactura, setModalFactura] = useState(false);
   const [numeroFactura, setNumeroFactura] = useState("");
+  const [eliminandoPedido, setEliminandoPedido] = useState(false);
 
   const [montoPago, setMontoPago] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
@@ -418,6 +419,60 @@ async function quitarFactura() {
 
   setModalFactura(false);
   cargarPedidos();
+}
+
+async function eliminarPedidoCompleto() {
+  if (!pedidoSeleccionado || eliminandoPedido) return;
+
+  const confirmar = confirm(
+    "Estas seguro de cancelar este pedido? Se eliminara por completo junto con sus items, pagos y movimientos economicos asociados."
+  );
+
+  if (!confirmar) return;
+
+  setEliminandoPedido(true);
+
+  const conceptosAsociados = [
+    `Pago pedido ${pedidoSeleccionado.numero}`,
+    `Entrega pedido ${pedidoSeleccionado.numero}`,
+    `Pago venta directa ${pedidoSeleccionado.numero}`,
+  ];
+
+  const { error: itemsError } = await supabase
+    .from("pedido_items")
+    .delete()
+    .eq("pedido_id", pedidoSeleccionado.id);
+
+  const { error: pagosError } = await supabase
+    .from("pagos_pedidos")
+    .delete()
+    .eq("pedido_id", pedidoSeleccionado.id);
+
+  const { error: movimientosError } = await supabase
+    .from("movimientos_economia")
+    .delete()
+    .in("concepto", conceptosAsociados);
+
+  const { error: pedidoError } = await supabase
+    .from("pedidos")
+    .delete()
+    .eq("id", pedidoSeleccionado.id);
+
+  setEliminandoPedido(false);
+
+  if (itemsError || pagosError || movimientosError || pedidoError) {
+    alert("No se pudo cancelar y eliminar el pedido.");
+    return;
+  }
+
+  setPedidos((actual) =>
+    actual.filter((pedido) => pedido.id !== pedidoSeleccionado.id)
+  );
+  setPedidoSeleccionado(null);
+  setPedidoItems([]);
+  setHistorialPagos([]);
+  setModalAbierto(false);
+  setModalEntregaFinal(false);
 }
 
 const pedidosFiltrados =
@@ -1180,36 +1235,11 @@ const pedidosPaginados =
 </button>
 
 <button
-  onClick={async () => {
-
-    const confirmar = confirm(
-      "¿Deseás cancelar el pedido?"
-    );
-
-    if (!confirmar) return;
-
-    await supabase
-      .from("pedidos")
-      .update({
-        estado: "Cancelado",
-      })
-      .eq("id", pedidoSeleccionado.id);
-
-    setPedidoSeleccionado({
-      ...pedidoSeleccionado,
-      estado: "Cancelado",
-    });
-
-    cargarPedidos();
-
-setModalAbierto(false);
-
-setModalEntregaFinal(false);
-
-  }}
-  className="bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white transition px-4 py-2 rounded-xl border border-red-500/20 text-sm"
+  onClick={eliminarPedidoCompleto}
+  disabled={eliminandoPedido}
+  className="bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white transition px-4 py-2 rounded-xl border border-red-500/20 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
 >
-  Cancelar pedido
+  {eliminandoPedido ? "Eliminando..." : "Cancelar pedido"}
 </button>
 
 {/* Modal registrar pago */}

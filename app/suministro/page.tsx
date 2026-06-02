@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import BackButton from "@/components/BackButton";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
@@ -15,6 +14,7 @@ const [materiales, setMateriales] = useState<any[]>([]);
 const [modalNuevo, setModalNuevo] = useState(false);
 
 const [modalCompra, setModalCompra] = useState(false);
+const [compraEditando, setCompraEditando] = useState<any>(null);
 
 const [suministroCompra, setSuministroCompra] = useState("");
 
@@ -48,6 +48,43 @@ function formatearCantidad(value: number | string) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 3,
   });
+}
+
+function limpiarFormularioCompra() {
+  setCompraEditando(null);
+  setSuministroCompra("");
+  setCantidadCompra("");
+  setProveedorCompra("");
+  setMontoTotal("");
+  setMontoAbonado("");
+  setObservacionCompra("");
+  setFechaCompra(new Date().toISOString().split("T")[0]);
+}
+
+function cerrarModalCompra() {
+  setModalCompra(false);
+  limpiarFormularioCompra();
+}
+
+function abrirNuevaCompra() {
+  limpiarFormularioCompra();
+  setModalCompra(true);
+}
+
+function abrirEditarCompra(compra: any) {
+  setCompraEditando(compra);
+  setSuministroCompra(compra.suministro_id || "");
+  setCantidadCompra(String(compra.cantidad || ""));
+  setProveedorCompra(compra.proveedor || "");
+  setMontoTotal(String(compra.monto_total || ""));
+  setMontoAbonado(String(compra.monto_abonado || ""));
+  setObservacionCompra(compra.observacion || "");
+  setFechaCompra(
+    compra.created_at
+      ? new Date(compra.created_at).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0]
+  );
+  setModalCompra(true);
 }
 
 async function cargarSuministros() {
@@ -204,6 +241,89 @@ async function guardarCompra() {
 
   if (!material) return;
 
+  if (compraEditando) {
+    const materialOriginal = materiales.find(
+      (item) => item.id === compraEditando.suministro_id
+    );
+    const cantidadAnterior = Number(compraEditando.cantidad || 0);
+    const cantidadNueva = Number(cantidadCompra || 0);
+
+    if (materialOriginal && materialOriginal.id !== suministroCompra) {
+      await supabase
+        .from("suministros")
+        .update({
+          stock_actual: Number(materialOriginal.stock) - cantidadAnterior,
+          updated_at: new Date(),
+        })
+        .eq("id", materialOriginal.id);
+
+      await supabase
+        .from("suministros")
+        .update({
+          stock_actual: Number(material.stock) + cantidadNueva,
+          updated_at: new Date(),
+        })
+        .eq("id", suministroCompra);
+    } else {
+      const diferencia = cantidadNueva - cantidadAnterior;
+
+      await supabase
+        .from("suministros")
+        .update({
+          stock_actual: Number(material.stock) + diferencia,
+          updated_at: new Date(),
+        })
+        .eq("id", suministroCompra);
+    }
+
+    const { error } = await supabase
+      .from("movimientos_suministro")
+      .update({
+        suministro_id: suministroCompra,
+        cantidad: cantidadNueva,
+        proveedor: proveedorCompra,
+        monto_total: Number(montoTotal),
+        monto_abonado: Number(montoAbonado || 0),
+        observacion: observacionCompra,
+      })
+      .eq("id", compraEditando.id);
+
+    if (error) {
+      alert("No se pudo editar la compra.");
+      return;
+    }
+
+    await supabase
+      .from("movimientos_economia")
+      .update({
+        concepto: `Compra de ${material.nombre}`,
+        monto: Number(montoTotal),
+        detalle: proveedorCompra || observacionCompra,
+        fecha: fechaCompra,
+        monto_total: Number(montoTotal),
+        monto_abonado: Number(montoAbonado || 0),
+        saldo_pendiente:
+          Number(montoTotal) -
+          Number(montoAbonado || 0),
+      })
+      .eq(
+        "concepto",
+        `Compra de ${
+          compraEditando.suministros?.nombre || material.nombre
+        }`
+      )
+      .eq("monto_total", Number(compraEditando.monto_total || 0))
+      .eq(
+        "monto_abonado",
+        Number(compraEditando.monto_abonado || 0)
+      );
+
+    cerrarModalCompra();
+    cargarSuministros();
+    cargarCompras();
+    return;
+  }
+
   const nuevoStock =
     Number(material.stock) +
     Number(cantidadCompra);
@@ -273,51 +393,12 @@ async function guardarCompra() {
     },
   ]);
 
-  setModalCompra(false);
-
-  setCantidadCompra("");
-  setProveedorCompra("");
-  setMontoTotal("");
-  setMontoAbonado("");
-  setObservacionCompra("");
+  cerrarModalCompra();
 
   cargarSuministros();
   cargarCompras();
 
 }
-
-
-  const movimientos = [
-    {
-      fecha: "22/05/2026",
-      material: "Cemento",
-      tipo: "Compra",
-      cantidad: "+40",
-      detalle: "Cementos Avellaneda",
-    },
-    {
-      fecha: "22/05/2026",
-      material: "Arena",
-      tipo: "Compra",
-      cantidad: "+10m3",
-      detalle: "Cantera Pilar",
-    },
-    {
-      fecha: "21/05/2026",
-      material: "Producción",
-      tipo: "Consumo",
-      cantidad: "-8 bolsas",
-      detalle: "4 pastones",
-    },
-    {
-      fecha: "20/05/2026",
-      material: "Producción",
-      tipo: "Consumo",
-      cantidad: "-2m3",
-      detalle: "4 pastones",
-    },
-  ];
-
   useEffect(() => {
 
   cargarSuministros();
@@ -367,7 +448,7 @@ async function guardarCompra() {
 </button>
 
 <button
-  onClick={() => setModalCompra(true)}
+  onClick={abrirNuevaCompra}
   className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl text-black font-semibold"
 >
   Registrar compra
@@ -407,10 +488,10 @@ async function guardarCompra() {
 
             </div>
 
-            {materiales.map((material, index) => (
+            {materiales.map((material) => (
 
               <div
-                key={index}
+                key={material.id}
                 className="grid grid-cols-7 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
               >
 
@@ -501,7 +582,7 @@ async function guardarCompra() {
           {/* Mobile */}
           <div className="md:hidden space-y-4 p-4">
 
-            {materiales.map((material, index) => (
+            {materiales.map((material) => (
 
               <div
                 key={material.id}
@@ -618,13 +699,14 @@ async function guardarCompra() {
 
   <div className="hidden md:block">
 
-    <div className="grid grid-cols-5 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
+    <div className="grid grid-cols-6 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
 
       <div>Fecha</div>
       <div>Material</div>
       <div>Cantidad</div>
       <div>Proveedor</div>
       <div>Total</div>
+      <div className="text-right">Acciones</div>
 
     </div>
 
@@ -632,7 +714,7 @@ async function guardarCompra() {
 
       <div
         key={item.id}
-        className="grid grid-cols-5 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
+        className="grid grid-cols-6 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
       >
 
         <div className="text-white">
@@ -670,6 +752,17 @@ async function guardarCompra() {
 
         </div>
 
+        <div className="text-right">
+
+          <button
+            onClick={() => abrirEditarCompra(item)}
+            className="text-cyan-400 hover:text-cyan-300 transition"
+          >
+            Editar
+          </button>
+
+        </div>
+
       </div>
 
     ))}
@@ -681,54 +774,55 @@ async function guardarCompra() {
           {/* Mobile */}
           <div className="md:hidden space-y-4 p-4">
 
-            {movimientos.map((movimiento, index) => (
+            {compras.map((item) => (
 
               <div
-                key={index}
+                key={item.id}
                 className="bg-[#07111f] border border-white/5 rounded-3xl p-5"
               >
 
                 <div className="flex items-center justify-between mb-3">
 
                   <span className="text-zinc-500 text-sm">
-                    {movimiento.fecha}
+                    {new Date(
+                      item.created_at
+                    ).toLocaleDateString("es-AR")}
                   </span>
 
                   <div>
 
-                    {movimiento.tipo === "Compra" && (
-                      <span className="text-emerald-400 text-sm">
-                        Compra
-                      </span>
-                    )}
-
-                    {movimiento.tipo === "Consumo" && (
-                      <span className="text-red-400 text-sm">
-                        Consumo
-                      </span>
-                    )}
+                    <span className="text-emerald-400 text-sm">
+                      Compra
+                    </span>
 
                   </div>
 
                 </div>
 
                 <h3 className="text-lg text-white mb-4">
-                  {movimiento.material}
+                  {item.suministros?.nombre}
                 </h3>
 
                 <div className="space-y-2 text-sm text-white">
 
                   <div className="flex justify-between">
                     <span>Cantidad</span>
-                    <span>{movimiento.cantidad}</span>
+                    <span>{formatearCantidad(item.cantidad)}</span>
                   </div>
 
                   <div className="flex justify-between gap-4">
                     <span>Detalle</span>
                     <span className="text-right">
-                      {movimiento.detalle}
+                      {item.proveedor || item.observacion || "-"}
                     </span>
                   </div>
+
+                  <button
+                    onClick={() => abrirEditarCompra(item)}
+                    className="w-full mt-4 bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-black transition px-4 py-3 rounded-2xl border border-cyan-500/20 font-semibold"
+                  >
+                    Editar compra
+                  </button>
 
                 </div>
 
@@ -769,56 +863,95 @@ async function guardarCompra() {
       </div>
 
       <div className="p-6 space-y-5">
+        <div>
 
-        <input
-          value={nombre}
-          onChange={(e) =>
-            setNombre(e.target.value)
-          }
-          placeholder="Nombre"
-          className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
-        />
-
-        <input
-          value={unidad}
-          onChange={(e) =>
-            setUnidad(e.target.value)
-          }
-          placeholder="Unidad (Kg, Bolsas, m3)"
-          className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
-        />
-
-        <div className="grid grid-cols-3 gap-4">
+          <label className="text-sm text-zinc-400 block mb-2">
+            Nombre
+          </label>
 
           <input
-            type="number"
-            value={stockActual}
+            value={nombre}
             onChange={(e) =>
-              setStockActual(e.target.value)
+              setNombre(e.target.value)
             }
-            placeholder="Stock actual"
-            className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            placeholder="Ej: Piedra"
+            className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
           />
 
-          <input
-            type="number"
-            value={stockMinimo}
-            onChange={(e) =>
-              setStockMinimo(e.target.value)
-            }
-            placeholder="Stock mínimo"
-            className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
-          />
+        </div>
+
+        <div>
+
+          <label className="text-sm text-zinc-400 block mb-2">
+            Unidad
+          </label>
 
           <input
-            type="number"
-            value={stockIdeal}
+            value={unidad}
             onChange={(e) =>
-              setStockIdeal(e.target.value)
+              setUnidad(e.target.value)
             }
-            placeholder="Stock ideal"
-            className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            placeholder="Ej: kg, bolsas, m3"
+            className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
           />
+
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Stock actual
+            </label>
+
+            <input
+              type="number"
+              value={stockActual}
+              onChange={(e) =>
+                setStockActual(e.target.value)
+              }
+              placeholder="Ej: 21400"
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            />
+
+          </div>
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Stock minimo
+            </label>
+
+            <input
+              type="number"
+              value={stockMinimo}
+              onChange={(e) =>
+                setStockMinimo(e.target.value)
+              }
+              placeholder="Ej: 5000"
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            />
+
+          </div>
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Stock ideal
+            </label>
+
+            <input
+              type="number"
+              value={stockIdeal}
+              onChange={(e) =>
+                setStockIdeal(e.target.value)
+              }
+              placeholder="Ej: 30000"
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            />
+
+          </div>
 
         </div>
 
@@ -863,11 +996,11 @@ async function guardarCompra() {
         <div className="flex items-center justify-between">
 
           <h2 className="text-2xl font-bold text-white">
-            Registrar compra
+            {compraEditando ? "Editar compra" : "Registrar compra"}
           </h2>
 
           <button
-            onClick={() => setModalCompra(false)}
+            onClick={cerrarModalCompra}
             className="text-zinc-400 hover:text-white text-3xl"
           >
             ×
@@ -1043,9 +1176,7 @@ async function guardarCompra() {
         <div className="flex justify-end gap-4">
 
           <button
-            onClick={() =>
-              setModalCompra(false)
-            }
+            onClick={cerrarModalCompra}
             className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5 text-white"
           >
 
@@ -1058,7 +1189,7 @@ async function guardarCompra() {
             className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl text-black font-semibold"
           >
 
-            Guardar compra
+            {compraEditando ? "Guardar cambios" : "Guardar compra"}
 
           </button>
 

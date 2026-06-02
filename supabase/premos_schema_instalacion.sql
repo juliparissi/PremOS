@@ -227,6 +227,9 @@ create index if not exists presupuestos_fecha_idx on public.presupuestos(fecha);
 create index if not exists pedidos_cliente_idx on public.pedidos(cliente_id);
 create index if not exists pedidos_estado_idx on public.pedidos(estado);
 create index if not exists pedidos_con_factura_idx on public.pedidos(con_factura);
+create unique index if not exists pedidos_presupuesto_unico_idx
+on public.pedidos(presupuesto_id)
+where presupuesto_id is not null;
 create index if not exists movimientos_economia_fecha_idx on public.movimientos_economia(fecha);
 create index if not exists movimientos_economia_tipo_idx on public.movimientos_economia(tipo);
 create index if not exists movimientos_suministro_suministro_idx on public.movimientos_suministro(suministro_id);

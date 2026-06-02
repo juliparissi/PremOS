@@ -15,6 +15,9 @@ export default function PresupuestosPage() {
 
   const [presupuestos, setPresupuestos] = useState<any[]>([]);
   const [presupuestoItems, setPresupuestoItems] = useState<any[]>([]);
+  const [pedidosPorPresupuesto, setPedidosPorPresupuesto] = useState<
+    Record<string, string>
+  >({});
 
 
   const [clienteSeleccionado, setClienteSeleccionado] = useState("");
@@ -62,6 +65,11 @@ export default function PresupuestosPage() {
   .select("*")
   .order("created_at", { ascending: false });
 
+    const { data: pedidosData } = await supabase
+      .from("pedidos")
+      .select("id,presupuesto_id,numero")
+      .not("presupuesto_id", "is", null);
+
     if (clientesData) {
       setClientes(clientesData);
     }
@@ -72,6 +80,18 @@ export default function PresupuestosPage() {
 
     if (presupuestosData) {
       setPresupuestos(presupuestosData);
+    }
+
+    if (pedidosData) {
+      setPedidosPorPresupuesto(
+        pedidosData.reduce<Record<string, string>>((acc, pedido) => {
+          if (pedido.presupuesto_id) {
+            acc[pedido.presupuesto_id] = pedido.numero || "Pedido generado";
+          }
+
+          return acc;
+        }, {})
+      );
     }
 
   }
@@ -364,6 +384,35 @@ const numero = `PRES-${letra}${String(
 
   if (!presupuestoSeleccionado) return;
 
+  const pedidoExistenteLocal =
+    pedidosPorPresupuesto[presupuestoSeleccionado.id];
+
+  if (pedidoExistenteLocal) {
+    alert(`Este presupuesto ya tiene pedido generado: ${pedidoExistenteLocal}`);
+    return;
+  }
+
+  const { data: pedidoExistente } = await supabase
+    .from("pedidos")
+    .select("id,numero")
+    .eq("presupuesto_id", presupuestoSeleccionado.id)
+    .maybeSingle();
+
+  if (pedidoExistente) {
+    setPedidosPorPresupuesto((actual) => ({
+      ...actual,
+      [presupuestoSeleccionado.id]:
+        pedidoExistente.numero || "Pedido generado",
+    }));
+
+    alert(
+      `Este presupuesto ya tiene pedido generado: ${
+        pedidoExistente.numero || "Pedido"
+      }`
+    );
+    return;
+  }
+
   const totalPedidos =
     (await supabase
       .from("pedidos")
@@ -443,6 +492,13 @@ const numero = `PRES-${letra}${String(
       .from("pedido_items")
       .insert(itemsPedido);
 
+    setPedidosPorPresupuesto((actual) => ({
+      ...actual,
+      [presupuestoSeleccionado.id]: data.numero || numeroPedido,
+    }));
+
+    await cargarDatos();
+
     alert("Pedido creado correctamente 😎");
 
   }
@@ -487,6 +543,11 @@ const presupuestosPaginados =
     inicio,
     fin
   );
+
+const pedidoGeneradoSeleccionado =
+  presupuestoSeleccionado
+    ? pedidosPorPresupuesto[presupuestoSeleccionado.id]
+    : "";
 
   useEffect(() => {
     cargarDatos();
@@ -1543,12 +1604,18 @@ const presupuestosPaginados =
 
               {estadoPresupuesto === "Aceptado" && (
 
-                <button
-  onClick={crearPedido}
-  className="bg-emerald-500 hover:bg-emerald-400 transition px-4 py-2 rounded-xl font-medium text-s"
->
-  Crear pedido
-</button>
+                pedidoGeneradoSeleccionado ? (
+                  <span className="bg-white/5 border border-white/5 text-zinc-300 px-4 py-2 rounded-xl text-sm">
+                    Pedido generado: {pedidoGeneradoSeleccionado}
+                  </span>
+                ) : (
+                  <button
+    onClick={crearPedido}
+    className="bg-emerald-500 hover:bg-emerald-400 transition px-4 py-2 rounded-xl font-medium text-s"
+  >
+    Crear pedido
+  </button>
+                )
 
               )}
 

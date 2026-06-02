@@ -3,7 +3,19 @@ import autoTable from "jspdf-autotable";
 import { getEmpresaConfig } from "../lib/empresa";
 
 type ReportePDF = {
-  tipo?: "completo" | "finanzas" | "clientes" | "presupuestos" | "ventas";
+  tipo?:
+    | "completo"
+    | "finanzas"
+    | "ingresos-gastos"
+    | "ventas"
+    | "cobranzas"
+    | "clientes"
+    | "presupuestos"
+    | "productos"
+    | "stock"
+    | "produccion"
+    | "suministros"
+    | "rentabilidad";
   desde: string;
   hasta: string;
   ingresos: number;
@@ -12,6 +24,7 @@ type ReportePDF = {
   ventasGeneradas: number;
   ventasCobradas: number;
   ventasPendientes: number;
+  ticketPromedio?: number;
   pedidos: number;
   clientesActivos: number;
   presupuestosGenerados: number;
@@ -22,8 +35,67 @@ type ReportePDF = {
     cliente: string;
     pedidos: number;
     total: number;
+    pendiente?: number;
+  }>;
+  productosMasVendidos?: Array<{
+    nombre: string;
+    cantidad: number;
+    total: number;
+    detalle?: string;
+  }>;
+  stockDisponible?: Array<{
+    nombre: string;
+    actual: number;
+    minimo: number;
+    ideal: number;
+    estado: string;
+    unidad?: string;
+  }>;
+  suministrosCriticos?: Array<{
+    nombre: string;
+    actual: number;
+    minimo: number;
+    ideal: number;
+    estado: string;
+    unidad?: string;
+  }>;
+  produccionPorProducto?: Array<{
+    nombre: string;
+    cantidad: number;
+    total: number;
+    detalle?: string;
+  }>;
+  produccionPorColor?: Array<{
+    nombre: string;
+    cantidad: number;
+    total: number;
+    detalle?: string;
+  }>;
+  rentabilidadProductos?: Array<{
+    producto: string;
+    cantidad: number;
+    ventas: number;
+    costoEstimado: number;
+    rentabilidad: number;
+    margen: number;
   }>;
   movimientos: Array<{
+    fecha: string;
+    tipo: string;
+    concepto: string;
+    total: number;
+    abonado: number;
+    pendiente: number;
+  }>;
+  ventasDetalle?: Array<{
+    fecha: string;
+    tipo: string;
+    concepto: string;
+    total: number;
+    abonado: number;
+    pendiente: number;
+  }>;
+  cobranzasDetalle?: Array<{
     fecha: string;
     tipo: string;
     concepto: string;
@@ -54,9 +126,16 @@ type TrackProduccionPDF = {
 const reporteTitulos = {
   completo: "REPORTE GENERAL",
   finanzas: "REPORTE INGRESOS Y GASTOS",
+  "ingresos-gastos": "REPORTE INGRESOS Y GASTOS",
   clientes: "REPORTE MEJORES CLIENTES",
   presupuestos: "REPORTE PRESUPUESTOS",
-  ventas: "REPORTE VENTAS Y COBRANZA",
+  ventas: "REPORTE VENTAS",
+  cobranzas: "REPORTE COBRANZAS",
+  productos: "REPORTE PRODUCTOS VENDIDOS",
+  stock: "REPORTE STOCK DISPONIBLE",
+  produccion: "REPORTE PRODUCCION",
+  suministros: "REPORTE SUMINISTROS",
+  rentabilidad: "REPORTE RENTABILIDAD",
 };
 
 function formatMoney(value: number) {
@@ -308,6 +387,7 @@ export function generarPDFReporte(data: ReportePDF) {
     ["Ventas generadas", formatMoney(data.ventasGeneradas)],
     ["Ventas cobradas", formatMoney(data.ventasCobradas)],
     ["Saldo por cobrar", formatMoney(data.ventasPendientes)],
+    ["Ticket promedio", formatMoney(data.ticketPromedio || 0)],
     ["Pedidos", data.pedidos.toLocaleString("es-AR")],
     ["Clientes activos", data.clientesActivos.toLocaleString("es-AR")],
     ["Presupuestos generados", data.presupuestosGenerados.toLocaleString("es-AR")],
@@ -319,6 +399,11 @@ export function generarPDFReporte(data: ReportePDF) {
   const resumenPorTipo = {
     completo: resumenGeneral,
     finanzas: [
+      ["Ingresos cobrados", formatMoney(data.ingresos)],
+      ["Gastos pagados", formatMoney(data.gastos)],
+      ["Resultado", formatMoney(data.utilidad)],
+    ],
+    "ingresos-gastos": [
       ["Ingresos cobrados", formatMoney(data.ingresos)],
       ["Gastos pagados", formatMoney(data.gastos)],
       ["Resultado", formatMoney(data.utilidad)],
@@ -336,9 +421,51 @@ export function generarPDFReporte(data: ReportePDF) {
     ],
     ventas: [
       ["Ventas generadas", formatMoney(data.ventasGeneradas)],
+      ["Pedidos", data.pedidos.toLocaleString("es-AR")],
+      ["Ticket promedio", formatMoney(data.ticketPromedio || 0)],
+    ],
+    cobranzas: [
       ["Ventas cobradas", formatMoney(data.ventasCobradas)],
       ["Saldo por cobrar", formatMoney(data.ventasPendientes)],
       ["Pedidos", data.pedidos.toLocaleString("es-AR")],
+    ],
+    productos: [
+      ["Productos vendidos", (data.productosMasVendidos || []).length.toLocaleString("es-AR")],
+      ["Ventas generadas", formatMoney(data.ventasGeneradas)],
+      ["Pedidos", data.pedidos.toLocaleString("es-AR")],
+    ],
+    stock: [
+      ["Productos en stock", (data.stockDisponible || []).length.toLocaleString("es-AR")],
+      ["Stock critico/bajo", (data.stockDisponible || []).filter((item) => item.estado !== "Optimo").length.toLocaleString("es-AR")],
+    ],
+    produccion: [
+      ["Producciones", (data.produccionPorProducto || []).length.toLocaleString("es-AR")],
+      ["Pedidos del periodo", data.pedidos.toLocaleString("es-AR")],
+    ],
+    suministros: [
+      ["Suministros", (data.suministrosCriticos || []).length.toLocaleString("es-AR")],
+      ["Criticos/bajos", (data.suministrosCriticos || []).filter((item) => item.estado !== "Optimo").length.toLocaleString("es-AR")],
+    ],
+    rentabilidad: [
+      ["Ventas generadas", formatMoney(data.ventasGeneradas)],
+      [
+        "Costo estimado",
+        formatMoney(
+          (data.rentabilidadProductos || []).reduce(
+            (acc, item) => acc + item.costoEstimado,
+            0
+          )
+        ),
+      ],
+      [
+        "Rentabilidad estimada",
+        formatMoney(
+          (data.rentabilidadProductos || []).reduce(
+            (acc, item) => acc + item.rentabilidad,
+            0
+          )
+        ),
+      ],
     ],
   };
 
@@ -356,17 +483,146 @@ export function generarPDFReporte(data: ReportePDF) {
 
   const detalleStartY = (doc as any).lastAutoTable.finalY + 14;
 
+  if (tipo === "productos") {
+    doc.setFontSize(14);
+    doc.text("PRODUCTOS MAS VENDIDOS", 15, detalleStartY);
+
+    autoTable(doc, {
+      startY: detalleStartY + 8,
+      head: [["PRODUCTO", "CANTIDAD", "TOTAL"]],
+      body: (data.productosMasVendidos || []).map((item) => [
+        item.nombre,
+        item.cantidad.toLocaleString("es-AR"),
+        formatMoney(item.total),
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [7, 17, 31] },
+    });
+
+    doc.save(`${folio}-productos.pdf`);
+    return;
+  }
+
+  if (tipo === "stock") {
+    doc.setFontSize(14);
+    doc.text("STOCK DISPONIBLE", 15, detalleStartY);
+
+    autoTable(doc, {
+      startY: detalleStartY + 8,
+      head: [["PRODUCTO", "ACTUAL", "MINIMO", "IDEAL", "ESTADO"]],
+      body: (data.stockDisponible || []).map((item) => [
+        item.nombre,
+        item.actual.toLocaleString("es-AR", { maximumFractionDigits: 3 }),
+        item.minimo.toLocaleString("es-AR", { maximumFractionDigits: 3 }),
+        item.ideal.toLocaleString("es-AR", { maximumFractionDigits: 3 }),
+        item.estado,
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [7, 17, 31] },
+    });
+
+    doc.save(`${folio}-stock.pdf`);
+    return;
+  }
+
+  if (tipo === "suministros") {
+    doc.setFontSize(14);
+    doc.text("SUMINISTROS", 15, detalleStartY);
+
+    autoTable(doc, {
+      startY: detalleStartY + 8,
+      head: [["MATERIAL", "STOCK", "MINIMO", "OBJETIVO", "ESTADO"]],
+      body: (data.suministrosCriticos || []).map((item) => [
+        item.nombre,
+        `${item.actual.toLocaleString("es-AR", { maximumFractionDigits: 3 })} ${item.unidad || ""}`,
+        `${item.minimo.toLocaleString("es-AR", { maximumFractionDigits: 3 })} ${item.unidad || ""}`,
+        `${item.ideal.toLocaleString("es-AR", { maximumFractionDigits: 3 })} ${item.unidad || ""}`,
+        item.estado,
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [7, 17, 31] },
+    });
+
+    doc.save(`${folio}-suministros.pdf`);
+    return;
+  }
+
+  if (tipo === "produccion") {
+    doc.setFontSize(14);
+    doc.text("PRODUCCION POR PRODUCTO", 15, detalleStartY);
+
+    autoTable(doc, {
+      startY: detalleStartY + 8,
+      head: [["PRODUCTO", "CANTIDAD", "DESTINO"]],
+      body: (data.produccionPorProducto || []).map((item) => [
+        item.nombre,
+        item.cantidad.toLocaleString("es-AR", { maximumFractionDigits: 3 }),
+        item.detalle || "-",
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [7, 17, 31] },
+    });
+
+    const colorY = (doc as any).lastAutoTable.finalY + 14;
+    doc.text("PRODUCCION POR COLOR", 15, colorY);
+
+    autoTable(doc, {
+      startY: colorY + 8,
+      head: [["COLOR", "CANTIDAD"]],
+      body: (data.produccionPorColor || []).map((item) => [
+        item.nombre,
+        item.cantidad.toLocaleString("es-AR", { maximumFractionDigits: 3 }),
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [7, 17, 31] },
+    });
+
+    doc.save(`${folio}-produccion.pdf`);
+    return;
+  }
+
+  if (tipo === "rentabilidad") {
+    doc.setFontSize(14);
+    doc.text("RENTABILIDAD ESTIMADA POR PRODUCTO", 15, detalleStartY);
+
+    autoTable(doc, {
+      startY: detalleStartY + 8,
+      head: [["PRODUCTO", "CANT.", "VENTAS", "COSTO EST.", "RESULTADO", "MARGEN"]],
+      body: (data.rentabilidadProductos || []).map((item) => [
+        item.producto,
+        item.cantidad.toLocaleString("es-AR", { maximumFractionDigits: 3 }),
+        formatMoney(item.ventas),
+        formatMoney(item.costoEstimado),
+        formatMoney(item.rentabilidad),
+        `${item.margen.toFixed(0)}%`,
+      ]),
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [7, 17, 31] },
+    });
+
+    doc.setFontSize(9);
+    doc.text(
+      "La rentabilidad es estimada segun recetas y costo promedio de compras registradas.",
+      15,
+      (doc as any).lastAutoTable.finalY + 12
+    );
+
+    doc.save(`${folio}-rentabilidad.pdf`);
+    return;
+  }
+
   if (tipo === "clientes") {
     doc.setFontSize(14);
     doc.text("MEJORES CLIENTES", 15, detalleStartY);
 
     autoTable(doc, {
       startY: detalleStartY + 8,
-      head: [["CLIENTE", "PEDIDOS", "TOTAL"]],
+      head: [["CLIENTE", "PEDIDOS", "TOTAL", "PENDIENTE"]],
       body: (data.mejoresClientes || []).map((cliente) => [
         cliente.cliente,
         cliente.pedidos.toLocaleString("es-AR"),
         formatMoney(cliente.total),
+        formatMoney(cliente.pendiente || 0),
       ]),
       styles: {
         fontSize: 9,
@@ -383,7 +639,9 @@ export function generarPDFReporte(data: ReportePDF) {
   doc.setFontSize(14);
   doc.text(
     tipo === "ventas"
-      ? "DETALLE DE COBRANZA"
+      ? "DETALLE DE VENTAS"
+      : tipo === "cobranzas"
+      ? "DETALLE DE COBRANZAS"
       : tipo === "presupuestos"
       ? "RESUMEN DE PRESUPUESTOS"
       : "DETALLE FINANCIERO",
@@ -394,15 +652,14 @@ export function generarPDFReporte(data: ReportePDF) {
   autoTable(doc, {
     startY: detalleStartY + 8,
     head: [["FECHA", "TIPO", "CONCEPTO", "TOTAL", "ABONADO", "PENDIENTE"]],
-    body: data.movimientos
-      .filter((movimiento) => {
-        if (tipo === "finanzas") return true;
-        if (tipo === "ventas") {
-          return movimiento.tipo.toLowerCase() === "ingreso";
-        }
-        if (tipo === "presupuestos") return false;
-        return true;
-      })
+    body: (tipo === "presupuestos"
+      ? []
+      : tipo === "ventas"
+      ? data.ventasDetalle || []
+      : tipo === "cobranzas"
+      ? data.cobranzasDetalle || []
+      : data.movimientos
+    )
       .slice(0, 40)
       .map((movimiento) => [
       formatDate(movimiento.fecha),

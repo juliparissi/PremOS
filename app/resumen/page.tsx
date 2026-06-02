@@ -76,6 +76,29 @@ export default function ResumenPage() {
     return `${desde} - ${hasta}`;
   }
 
+  function movimientoPerteneceAPedidoVigente(
+    concepto: string | null | undefined,
+    pedidosExistentes: Set<string>
+  ) {
+    if (!concepto) return true;
+
+    const prefijosPedido = [
+      "Pago pedido ",
+      "Entrega pedido ",
+      "Pago venta directa ",
+    ];
+
+    const prefijo = prefijosPedido.find((item) =>
+      concepto.startsWith(item)
+    );
+
+    if (!prefijo) return true;
+
+    const numeroPedido = concepto.replace(prefijo, "").trim();
+
+    return pedidosExistentes.has(numeroPedido);
+  }
+
   async function cargarResumen() {
 
     /* Clientes */
@@ -96,6 +119,13 @@ export default function ResumenPage() {
         .from("pedidos")
         .select("*");
 
+    const numerosPedidosExistentes =
+      new Set(
+        (pedidosData || []).map(
+          (pedido) => pedido.numero
+        )
+      );
+
     if (pedidosData) {
 
       /* Activos */
@@ -103,7 +133,9 @@ export default function ResumenPage() {
         pedidosData.filter(
           (pedido) =>
             pedido.estado !==
-            "Entregado"
+              "Entregado" &&
+            pedido.estado !==
+              "Cancelado"
         );
 
       setPedidosActivos(
@@ -138,7 +170,13 @@ export default function ResumenPage() {
 
       /* Saldo pendiente */
       const pendiente =
-        pedidosData.reduce(
+        pedidosData
+          .filter(
+            (pedido) =>
+              pedido.estado !==
+              "Cancelado"
+          )
+          .reduce(
           (acc, pedido) =>
             acc +
             Number(
@@ -155,6 +193,8 @@ export default function ResumenPage() {
       const clientesDeuda =
         pedidosData.filter(
           (pedido) =>
+            pedido.estado !==
+              "Cancelado" &&
             Number(
               pedido.saldo_restante || 0
             ) > 0
@@ -183,14 +223,23 @@ export default function ResumenPage() {
     if (economiaData) {
 
       const movimientosIngresosFiltrados =
-        economiaData.filter((movimiento) =>
-          estaEnRango(
+        economiaData.filter((movimiento) => {
+          if (
+            !movimientoPerteneceAPedidoVigente(
+              movimiento.concepto,
+              numerosPedidosExistentes
+            )
+          ) {
+            return false;
+          }
+
+          return estaEnRango(
             movimiento.fecha ||
               movimiento.created_at,
             filtroIngresosDesde,
             filtroIngresosHasta
-          )
-        );
+          );
+        });
 
       const movimientosGastosFiltrados =
         economiaData.filter((movimiento) =>

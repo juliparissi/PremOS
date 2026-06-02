@@ -7,6 +7,7 @@ export type PremosModule =
   | "clientes"
   | "productos"
   | "presupuestos"
+  | "ventas"
   | "pedidos"
   | "produccion"
   | "economia"
@@ -26,6 +27,7 @@ export const planModules: Record<PremosPlan, PremosModule[]> = {
     "clientes",
     "productos",
     "presupuestos",
+    "ventas",
     "pedidos",
     "configuracion",
   ],
@@ -36,6 +38,7 @@ export const planModules: Record<PremosPlan, PremosModule[]> = {
     "clientes",
     "productos",
     "presupuestos",
+    "ventas",
     "pedidos",
     "produccion",
     "economia",
@@ -52,6 +55,7 @@ export const routeModules: Record<string, PremosModule> = {
   "/clientes": "clientes",
   "/productos": "productos",
   "/presupuestos": "presupuestos",
+  "/ventas": "ventas",
   "/pedidos": "pedidos",
   "/produccion": "produccion",
   "/economia": "economia",
