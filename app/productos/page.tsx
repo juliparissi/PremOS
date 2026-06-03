@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "../../lib/supabase";
 
 export default function ProductosPage() {
@@ -128,12 +129,21 @@ export default function ProductosPage() {
 
         </div>
 
-        <button
-          onClick={() => setModalAbierto(true)}
-          className="bg-emerald-500 hover:bg-emerald-400 transition px-5 py-3 rounded-2xl font-medium"
-        >
-          + Nuevo producto
-        </button>
+        <div className="flex flex-wrap justify-end gap-3">
+          <Link
+            href="/productos/lista-precios"
+            className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl font-medium text-black"
+          >
+            Lista de precios
+          </Link>
+
+          <button
+            onClick={() => setModalAbierto(true)}
+            className="bg-emerald-500 hover:bg-emerald-400 transition px-5 py-3 rounded-2xl font-medium"
+          >
+            + Nuevo producto
+          </button>
+        </div>
 
       </div>
 

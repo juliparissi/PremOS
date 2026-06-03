@@ -38,6 +38,28 @@ create table if not exists public.productos (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.listas_precios (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  descripcion text,
+  activo boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.lista_precios_items (
+  id uuid primary key default gen_random_uuid(),
+  lista_id uuid not null references public.listas_precios(id) on delete cascade,
+  producto_id uuid references public.productos(id) on delete set null,
+  producto text not null,
+  precio_unitario numeric not null default 0,
+  precio_m2 numeric not null default 0,
+  observaciones text,
+  orden integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.colores (
   id uuid primary key default gen_random_uuid(),
   nombre text not null unique,
@@ -222,6 +244,9 @@ create table if not exists public.configuracion_empresa (
 
 create index if not exists clientes_nombre_idx on public.clientes(nombre);
 create index if not exists productos_nombre_idx on public.productos(producto, modelo, color);
+create index if not exists listas_precios_nombre_idx on public.listas_precios(nombre);
+create index if not exists lista_precios_items_lista_idx on public.lista_precios_items(lista_id);
+create index if not exists lista_precios_items_producto_idx on public.lista_precios_items(producto_id);
 create index if not exists presupuestos_cliente_idx on public.presupuestos(cliente_id);
 create index if not exists presupuestos_fecha_idx on public.presupuestos(fecha);
 create index if not exists pedidos_cliente_idx on public.pedidos(cliente_id);
@@ -243,6 +268,16 @@ for each row execute function public.set_updated_at();
 drop trigger if exists productos_set_updated_at on public.productos;
 create trigger productos_set_updated_at
 before update on public.productos
+for each row execute function public.set_updated_at();
+
+drop trigger if exists listas_precios_set_updated_at on public.listas_precios;
+create trigger listas_precios_set_updated_at
+before update on public.listas_precios
+for each row execute function public.set_updated_at();
+
+drop trigger if exists lista_precios_items_set_updated_at on public.lista_precios_items;
+create trigger lista_precios_items_set_updated_at
+before update on public.lista_precios_items
 for each row execute function public.set_updated_at();
 
 drop trigger if exists colores_set_updated_at on public.colores;
@@ -297,6 +332,8 @@ begin
   foreach table_name in array array[
     'clientes',
     'productos',
+    'listas_precios',
+    'lista_precios_items',
     'colores',
     'presupuestos',
     'presupuesto_items',

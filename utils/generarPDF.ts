@@ -123,6 +123,16 @@ type TrackProduccionPDF = {
   }>;
 };
 
+type ListaPreciosPDF = {
+  nombre: string;
+  items: Array<{
+    producto: string;
+    precioUnitario: number;
+    precioM2: number;
+    observaciones?: string;
+  }>;
+};
+
 const reporteTitulos = {
   completo: "REPORTE GENERAL",
   finanzas: "REPORTE INGRESOS Y GASTOS",
@@ -744,4 +754,54 @@ export function generarPDFTrackProduccion(data: TrackProduccionPDF) {
   );
 
   doc.save(`${data.codigo}.pdf`);
+}
+
+export function generarPDFListaPrecios(data: ListaPreciosPDF) {
+  const doc = new jsPDF();
+  const fecha = formatToday();
+  const folio = `LP-${new Date()
+    .toISOString()
+    .slice(0, 10)
+    .replace(/-/g, "")}`;
+
+  agregarEncabezado(doc, "LISTA DE PRECIOS", folio, fecha);
+
+  doc.setFontSize(15);
+  doc.text(data.nombre.toUpperCase(), 14, 82);
+
+  doc.setFontSize(9);
+  doc.setTextColor(90);
+  doc.text("Valores sujetos a confirmacion comercial.", 14, 88);
+  doc.setTextColor(0);
+
+  autoTable(doc, {
+    startY: 96,
+    head: [["PRODUCTO", "PRECIO UNITARIO", "PRECIO POR M2", "OBSERVACIONES"]],
+    body: data.items.map((item) => [
+      item.producto,
+      formatMoney(item.precioUnitario),
+      formatMoney(item.precioM2),
+      item.observaciones || "-",
+    ]),
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+    },
+    headStyles: {
+      fillColor: [8, 18, 32],
+      textColor: [255, 255, 255],
+    },
+    alternateRowStyles: {
+      fillColor: [245, 245, 245],
+    },
+    columnStyles: {
+      0: { cellWidth: 62 },
+      1: { cellWidth: 35, halign: "right" },
+      2: { cellWidth: 35, halign: "right" },
+      3: { cellWidth: 50 },
+    },
+    margin: { left: 14, right: 14 },
+  });
+
+  doc.save(`${folio}-lista-precios.pdf`);
 }
