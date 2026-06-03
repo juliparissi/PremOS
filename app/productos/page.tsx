@@ -2,12 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  canUseModule,
+  normalizePlan,
+  type PremosPlan,
+} from "../../lib/planes";
 import { supabase } from "../../lib/supabase";
 
 export default function ProductosPage() {
 
   const [productos, setProductos] = useState<any[]>([]);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [plan, setPlan] = useState<PremosPlan>("full");
 
   const [producto, setProducto] = useState("");
   const [modelo, setModelo] = useState("");
@@ -108,6 +114,7 @@ export default function ProductosPage() {
   }
 
   useEffect(() => {
+    setPlan(normalizePlan(window.localStorage.getItem("premos_plan")));
     cargarProductos();
   }, []);
 
@@ -130,12 +137,14 @@ export default function ProductosPage() {
         </div>
 
         <div className="flex flex-wrap justify-end gap-3">
-          <Link
-            href="/productos/lista-precios"
-            className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl font-medium text-black"
-          >
-            Lista de precios
-          </Link>
+          {canUseModule(plan, "listas-precios") && (
+            <Link
+              href="/productos/lista-precios"
+              className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl font-medium text-black"
+            >
+              Lista de precios
+            </Link>
+          )}
 
           <button
             onClick={() => setModalAbierto(true)}

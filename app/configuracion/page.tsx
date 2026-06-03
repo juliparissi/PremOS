@@ -168,8 +168,8 @@ export default function ConfiguracionPage() {
                 Plan activo
               </h2>
 
-              <div className="grid grid-cols-2 gap-3">
-                {(["lite", "full"] as PremosPlan[]).map((item) => (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {(["lite", "full", "pro"] as PremosPlan[]).map((item) => (
                   <button
                     key={item}
                     onClick={() => setPlan(item)}
@@ -185,7 +185,7 @@ export default function ConfiguracionPage() {
               </div>
 
               <p className="text-zinc-500 text-sm mt-4">
-                Lite oculta IA, producción, economía, suministro y stock. Full habilita todo.
+                Lite habilita gestion basica comercial. Full suma produccion, stock, suministros, reportes y listas de precios. Pro suma el asistente IA con consultas mensuales.
               </p>
             </div>
 
@@ -299,3 +299,4 @@ function ConfigInput({
     </div>
   );
 }
+

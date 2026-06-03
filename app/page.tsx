@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { demoEmail, demoLoginEnabled, demoMode, demoPassword } from "../lib/demo";
+import { canUseModule, normalizePlan } from "../lib/planes";
 import { supabase } from "../lib/supabase";
 
 export default function HomePage() {
@@ -10,7 +11,9 @@ export default function HomePage() {
   const [password, setPassword] = useState("");
 
   function redirigirDespuesDeIngresar() {
-    if (window.innerWidth < 768) {
+    const plan = normalizePlan(window.localStorage.getItem("premos_plan"));
+
+    if (window.innerWidth < 768 && canUseModule(plan, "asistente")) {
       window.location.href = "/asistente";
     } else {
       window.location.href = "/resumen";

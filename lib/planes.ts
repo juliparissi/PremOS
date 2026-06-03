@@ -1,4 +1,4 @@
-export type PremosPlan = "lite" | "full";
+export type PremosPlan = "lite" | "full" | "pro";
 
 export type PremosModule =
   | "asistente"
@@ -6,6 +6,7 @@ export type PremosModule =
   | "reportes"
   | "clientes"
   | "productos"
+  | "listas-precios"
   | "presupuestos"
   | "ventas"
   | "pedidos"
@@ -18,6 +19,7 @@ export type PremosModule =
 export const planLabels: Record<PremosPlan, string> = {
   lite: "PremOS Lite",
   full: "PremOS Full",
+  pro: "PremOS Pro",
 };
 
 export const planModules: Record<PremosPlan, PremosModule[]> = {
@@ -29,14 +31,31 @@ export const planModules: Record<PremosPlan, PremosModule[]> = {
     "presupuestos",
     "ventas",
     "pedidos",
+    "economia",
     "configuracion",
   ],
   full: [
+    "resumen",
+    "reportes",
+    "clientes",
+    "productos",
+    "listas-precios",
+    "presupuestos",
+    "ventas",
+    "pedidos",
+    "produccion",
+    "economia",
+    "suministro",
+    "stock",
+    "configuracion",
+  ],
+  pro: [
     "asistente",
     "resumen",
     "reportes",
     "clientes",
     "productos",
+    "listas-precios",
     "presupuestos",
     "ventas",
     "pedidos",
@@ -53,6 +72,7 @@ export const routeModules: Record<string, PremosModule> = {
   "/resumen": "resumen",
   "/reportes": "reportes",
   "/clientes": "clientes",
+  "/productos/lista-precios": "listas-precios",
   "/productos": "productos",
   "/presupuestos": "presupuestos",
   "/ventas": "ventas",
@@ -65,7 +85,11 @@ export const routeModules: Record<string, PremosModule> = {
 };
 
 export function normalizePlan(value: string | null | undefined): PremosPlan {
-  return value === "lite" ? "lite" : "full";
+  if (value === "lite" || value === "full" || value === "pro") {
+    return value;
+  }
+
+  return "full";
 }
 
 export function canUseModule(plan: PremosPlan, module: PremosModule) {
@@ -73,9 +97,9 @@ export function canUseModule(plan: PremosPlan, module: PremosModule) {
 }
 
 export function moduleForPath(pathname: string) {
-  const match = Object.entries(routeModules).find(([route]) =>
-    pathname === route || pathname.startsWith(`${route}/`)
-  );
+  const match = Object.entries(routeModules)
+    .sort(([a], [b]) => b.length - a.length)
+    .find(([route]) => pathname === route || pathname.startsWith(`${route}/`));
 
   return match?.[1];
 }
