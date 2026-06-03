@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { supabase } from "../lib/supabase";
+import { demoMode } from "../lib/demo";
 import {
   canUseModule,
   moduleForPath,
@@ -168,7 +169,7 @@ export default function RootLayout({
                 </h1>
 
                 <p className="text-xs text-zinc-500 mt-1">
-                  {planLabels[plan]}
+                  {demoMode ? "Entorno demo" : planLabels[plan]}
                 </p>
               </div>
 
@@ -201,6 +202,14 @@ export default function RootLayout({
               ${esLogin ? "p-0" : "px-4 py-4 md:px-8 md:py-6"}
             `}
           >
+            {demoMode && !esLogin && (
+              <div className="mb-5 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-5 py-3 text-sm text-cyan-100">
+                <span className="font-bold">Modo demo:</span> estas viendo
+                datos de muestra para conocer el entorno. La instalacion final
+                se adapta al proceso real de cada empresa.
+              </div>
+            )}
+
             {children}
           </section>
         </main>

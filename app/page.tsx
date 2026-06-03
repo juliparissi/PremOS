@@ -1,12 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { demoEmail, demoLoginEnabled, demoMode, demoPassword } from "../lib/demo";
 import { supabase } from "../lib/supabase";
 
 export default function HomePage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  function redirigirDespuesDeIngresar() {
+    if (window.innerWidth < 768) {
+      window.location.href = "/asistente";
+    } else {
+      window.location.href = "/resumen";
+    }
+  }
 
   async function iniciarSesion() {
 
@@ -23,18 +32,29 @@ export default function HomePage() {
 
     } else {
 
-      if (window.innerWidth < 768) {
-
-  window.location.href = "/asistente";
-
-} else {
-
-  window.location.href = "/resumen";
-
-}
+      redirigirDespuesDeIngresar();
 
     }
 
+  }
+
+  async function iniciarDemo() {
+    if (!demoLoginEnabled) return;
+
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: demoEmail,
+      password: demoPassword,
+    });
+
+    if (error) {
+      alert("No se pudo ingresar a la demo. Revisar usuario demo.");
+      return;
+    }
+
+    redirigirDespuesDeIngresar();
   }
 
   return (
@@ -82,7 +102,9 @@ export default function HomePage() {
             </h1>
 
             <p className="text-zinc-400 text-sm">
-              Sistema operativo para premoldeados
+              {demoMode
+                ? "Entorno demo para conocer PremOS"
+                : "Sistema operativo para premoldeados"}
             </p>
 
           </div>
@@ -164,6 +186,15 @@ export default function HomePage() {
               Ingresar a PremOS
 
             </button>
+
+            {demoLoginEnabled && (
+              <button
+                onClick={iniciarDemo}
+                className="w-full bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-100 font-bold py-3 rounded-2xl transition border border-cyan-400/20"
+              >
+                Entrar a la demo
+              </button>
+            )}
 
           </div>
 
