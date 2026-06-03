@@ -25,7 +25,6 @@ export const planLabels: Record<PremosPlan, string> = {
 export const planModules: Record<PremosPlan, PremosModule[]> = {
   lite: [
     "resumen",
-    "reportes",
     "clientes",
     "productos",
     "presupuestos",
