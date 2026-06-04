@@ -47,7 +47,6 @@ export const planModules: Record<PremosPlan, PremosModule[]> = {
     "pedidos",
     "produccion",
     "economia",
-    "nomina",
     "suministro",
     "stock",
     "soporte",

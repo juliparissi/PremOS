@@ -284,6 +284,14 @@ create table if not exists public.configuracion_empresa (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.ia_consultas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  periodo text not null,
+  mensaje text,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists clientes_nombre_idx on public.clientes(nombre);
 create index if not exists proveedores_nombre_idx on public.proveedores(nombre);
 create index if not exists productos_nombre_idx on public.productos(producto, modelo, color);
@@ -307,6 +315,8 @@ create index if not exists nomina_movimientos_fecha_idx on public.nomina_movimie
 create index if not exists nomina_movimientos_tipo_idx on public.nomina_movimientos(tipo);
 create index if not exists movimientos_suministro_suministro_idx on public.movimientos_suministro(suministro_id);
 create index if not exists produccion_fecha_idx on public.produccion(fecha);
+create index if not exists ia_consultas_user_periodo_idx on public.ia_consultas(user_id, periodo);
+create index if not exists ia_consultas_periodo_idx on public.ia_consultas(periodo);
 
 drop trigger if exists clientes_set_updated_at on public.clientes;
 create trigger clientes_set_updated_at
@@ -415,7 +425,8 @@ begin
     'produccion_items',
     'notas_rapidas',
     'recetas_produccion',
-    'configuracion_empresa'
+    'configuracion_empresa',
+    'ia_consultas'
   ]
   loop
     execute format('alter table public.%I enable row level security', table_name);

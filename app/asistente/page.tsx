@@ -110,6 +110,7 @@ export default function HomePage() {
           tipo: "ia",
           contenido:
             data.respuesta ||
+            data.error ||
             "No pude responder.",
         },
       ]);

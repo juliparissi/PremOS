@@ -10,6 +10,7 @@ type ChatBody = {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const openaiApiKey = process.env.OPENAI_API_KEY;
+const AI_MONTHLY_LIMIT = 300;
 
 function getServerClients() {
   if (!supabaseUrl || !serviceRoleKey || !openaiApiKey) {
@@ -44,6 +45,64 @@ function extraerNombreCliente(mensaje: string) {
     .replace(/crea cliente/gi, "")
     .replace(/nuevo cliente/gi, "")
     .trim();
+}
+
+function periodoActual() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+async function verificarLimiteIA(
+  supabase: any,
+  userId: string
+) {
+  const periodo = periodoActual();
+
+  const { count, error } = await supabase
+    .from("ia_consultas")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("periodo", periodo);
+
+  if (error) {
+    console.error(error);
+    return {
+      allowed: false,
+      used: 0,
+      periodo,
+      error: true,
+    };
+  }
+
+  const used = count || 0;
+
+  return {
+    allowed: used < AI_MONTHLY_LIMIT,
+    used,
+    periodo,
+    error: false,
+  };
+}
+
+async function registrarConsultaIA(
+  supabase: any,
+  userId: string,
+  periodo: string,
+  mensaje: string
+) {
+  const { error } = await supabase.from("ia_consultas").insert([
+    {
+      user_id: userId,
+      periodo,
+      mensaje: mensaje.slice(0, 500),
+    },
+  ]);
+
+  if (error) {
+    console.error(error);
+  }
 }
 
 export async function POST(req: Request) {
@@ -82,6 +141,29 @@ export async function POST(req: Request) {
 
     const mensaje = body.mensaje.trim();
     const mensajeLower = mensaje.toLowerCase();
+    const limiteIA = await verificarLimiteIA(supabase, user.id);
+
+    if (limiteIA.error) {
+      return Response.json(
+        {
+          error:
+            "No se pudo verificar el limite mensual de consultas IA.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!limiteIA.allowed) {
+      return Response.json(
+        {
+          error:
+            "Limite mensual alcanzado. Tu plan Pro incluye hasta 300 consultas IA por mes.",
+          used: limiteIA.used,
+          limit: AI_MONTHLY_LIMIT,
+        },
+        { status: 429 }
+      );
+    }
 
     if (
       mensajeLower.includes("borrar cliente") ||
@@ -89,9 +171,13 @@ export async function POST(req: Request) {
       mensajeLower.includes("borra cliente") ||
       mensajeLower.includes("me borras el cliente")
     ) {
+      await registrarConsultaIA(supabase, user.id, limiteIA.periodo, mensaje);
+
       return Response.json({
         respuesta:
           "Por seguridad no borro clientes desde el chat. Hacelo desde el módulo de clientes, donde se puede revisar antes de confirmar.",
+        used: limiteIA.used + 1,
+        limit: AI_MONTHLY_LIMIT,
       });
     }
 
@@ -103,8 +189,12 @@ export async function POST(req: Request) {
       const nombre = extraerNombreCliente(mensaje);
 
       if (!nombre) {
+        await registrarConsultaIA(supabase, user.id, limiteIA.periodo, mensaje);
+
         return Response.json({
           respuesta: "Decime el nombre del cliente.",
+          used: limiteIA.used + 1,
+          limit: AI_MONTHLY_LIMIT,
         });
       }
 
@@ -115,8 +205,12 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (clienteExistente) {
+        await registrarConsultaIA(supabase, user.id, limiteIA.periodo, mensaje);
+
         return Response.json({
           respuesta: `El cliente ${nombre} ya existe.`,
+          used: limiteIA.used + 1,
+          limit: AI_MONTHLY_LIMIT,
         });
       }
 
@@ -135,8 +229,12 @@ export async function POST(req: Request) {
         );
       }
 
+      await registrarConsultaIA(supabase, user.id, limiteIA.periodo, mensaje);
+
       return Response.json({
         respuesta: `Cliente ${nombre} creado correctamente.`,
+        used: limiteIA.used + 1,
+        limit: AI_MONTHLY_LIMIT,
       });
     }
 
@@ -241,8 +339,12 @@ No inventes datos.
       ],
     });
 
+    await registrarConsultaIA(supabase, user.id, limiteIA.periodo, mensaje);
+
     return Response.json({
       respuesta: respuesta.choices[0].message.content,
+      used: limiteIA.used + 1,
+      limit: AI_MONTHLY_LIMIT,
     });
   } catch (error) {
     console.error(error);
