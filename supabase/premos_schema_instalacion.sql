@@ -171,6 +171,36 @@ create table if not exists public.movimientos_economia_abonos (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.nomina_empleados (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  dni text,
+  cuil text,
+  telefono text,
+  mail text,
+  puesto text,
+  fecha_ingreso date,
+  sueldo_base numeric not null default 0,
+  estado text not null default 'Activo',
+  observaciones text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.nomina_movimientos (
+  id uuid primary key default gen_random_uuid(),
+  empleado_id uuid not null references public.nomina_empleados(id) on delete cascade,
+  tipo text not null default 'Adelanto',
+  periodo text,
+  monto numeric not null default 0,
+  metodo_pago text,
+  observaciones text,
+  fecha date,
+  economia_movimiento_id uuid references public.movimientos_economia(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.stock (
   id uuid primary key default gen_random_uuid(),
   producto text not null unique,
@@ -270,6 +300,11 @@ on public.pedidos(presupuesto_id)
 where presupuesto_id is not null;
 create index if not exists movimientos_economia_fecha_idx on public.movimientos_economia(fecha);
 create index if not exists movimientos_economia_tipo_idx on public.movimientos_economia(tipo);
+create index if not exists nomina_empleados_nombre_idx on public.nomina_empleados(nombre);
+create index if not exists nomina_empleados_estado_idx on public.nomina_empleados(estado);
+create index if not exists nomina_movimientos_empleado_idx on public.nomina_movimientos(empleado_id);
+create index if not exists nomina_movimientos_fecha_idx on public.nomina_movimientos(fecha);
+create index if not exists nomina_movimientos_tipo_idx on public.nomina_movimientos(tipo);
 create index if not exists movimientos_suministro_suministro_idx on public.movimientos_suministro(suministro_id);
 create index if not exists produccion_fecha_idx on public.produccion(fecha);
 
@@ -318,6 +353,16 @@ create trigger movimientos_economia_set_updated_at
 before update on public.movimientos_economia
 for each row execute function public.set_updated_at();
 
+drop trigger if exists nomina_empleados_set_updated_at on public.nomina_empleados;
+create trigger nomina_empleados_set_updated_at
+before update on public.nomina_empleados
+for each row execute function public.set_updated_at();
+
+drop trigger if exists nomina_movimientos_set_updated_at on public.nomina_movimientos;
+create trigger nomina_movimientos_set_updated_at
+before update on public.nomina_movimientos
+for each row execute function public.set_updated_at();
+
 drop trigger if exists stock_set_updated_at on public.stock;
 create trigger stock_set_updated_at
 before update on public.stock
@@ -361,6 +406,8 @@ begin
     'pagos_pedidos',
     'movimientos_economia',
     'movimientos_economia_abonos',
+    'nomina_empleados',
+    'nomina_movimientos',
     'stock',
     'suministros',
     'movimientos_suministro',
