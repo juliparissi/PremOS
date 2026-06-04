@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import BackButton from "@/components/BackButton";
+import {
+  MoneyEyeButton,
+  privateMoneyValue,
+  useMoneyPrivacy,
+} from "@/components/MoneyPrivacy";
 import { supabase } from "../../lib/supabase";
 import { RECETAS } from "@/lib/recetas";
 import { generarPDFReporte } from "../../utils/generarPDF";
@@ -313,6 +318,7 @@ export default function ReportesPage() {
   const [desde, setDesde] = useState(firstDayOfMonth());
   const [hasta, setHasta] = useState(today());
   const [menuDescarga, setMenuDescarga] = useState(false);
+  const moneyPrivacy = useMoneyPrivacy("premos_reportes_saldos");
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -780,6 +786,14 @@ export default function ReportesPage() {
     setMenuDescarga(false);
   }
 
+  function privateReportMoney(key: string, value: string) {
+    return privateMoneyValue(value, moneyPrivacy.isHidden(key));
+  }
+
+  function privateGeneralMoney(value: string) {
+    return privateMoneyValue(value, moneyPrivacy.allHidden);
+  }
+
   const reportesDisponibles: Array<{ label: string; tipo: ReporteTipo }> = [
     { label: "Reporte completo", tipo: "completo" },
     { label: "Ingresos y gastos", tipo: "ingresos-gastos" },
@@ -812,6 +826,13 @@ export default function ReportesPage() {
             <DateInput label="Hasta" value={hasta} onChange={setHasta} />
 
             <div className="flex items-end gap-3">
+              <button
+                onClick={moneyPrivacy.toggleAll}
+                className="bg-white/5 hover:bg-white/10 transition px-4 py-3 rounded-2xl border border-white/5"
+              >
+                {moneyPrivacy.allHidden ? "Mostrar saldos" : "Ocultar saldos"}
+              </button>
+
               <button
                 onClick={cargarReportes}
                 className="bg-white/5 hover:bg-white/10 transition px-4 py-3 rounded-2xl border border-white/5"
@@ -857,35 +878,71 @@ export default function ReportesPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-6">
-              <KpiCard label="Ventas generadas" value={formatMoney(ventasGeneradas)} />
+              <KpiCard
+                label="Ventas generadas"
+                value={privateReportMoney(
+                  "ventas-generadas",
+                  formatMoney(ventasGeneradas)
+                )}
+                hidden={moneyPrivacy.isHidden("ventas-generadas")}
+                onToggleHidden={() => moneyPrivacy.toggleItem("ventas-generadas")}
+              />
               <KpiCard
                 label="Ventas cobradas"
-                value={formatMoney(ventasCobradas)}
+                value={privateReportMoney(
+                  "ventas-cobradas",
+                  formatMoney(ventasCobradas)
+                )}
                 tone="emerald"
+                hidden={moneyPrivacy.isHidden("ventas-cobradas")}
+                onToggleHidden={() => moneyPrivacy.toggleItem("ventas-cobradas")}
               />
               <KpiCard
                 label="Saldo por cobrar"
-                value={formatMoney(ventasPendientes)}
+                value={privateReportMoney(
+                  "saldo-por-cobrar",
+                  formatMoney(ventasPendientes)
+                )}
                 tone="yellow"
+                hidden={moneyPrivacy.isHidden("saldo-por-cobrar")}
+                onToggleHidden={() => moneyPrivacy.toggleItem("saldo-por-cobrar")}
               />
               <KpiCard
                 label="Ticket promedio"
-                value={formatMoney(ticketPromedio)}
+                value={privateReportMoney(
+                  "ticket-promedio",
+                  formatMoney(ticketPromedio)
+                )}
                 tone="cyan"
+                hidden={moneyPrivacy.isHidden("ticket-promedio")}
+                onToggleHidden={() => moneyPrivacy.toggleItem("ticket-promedio")}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-8">
               <KpiCard
                 label="Ingresos cobrados"
-                value={formatMoney(ingresos)}
+                value={privateReportMoney(
+                  "ingresos-cobrados",
+                  formatMoney(ingresos)
+                )}
                 tone="emerald"
+                hidden={moneyPrivacy.isHidden("ingresos-cobrados")}
+                onToggleHidden={() => moneyPrivacy.toggleItem("ingresos-cobrados")}
               />
-              <KpiCard label="Gastos pagados" value={formatMoney(gastos)} tone="red" />
+              <KpiCard
+                label="Gastos pagados"
+                value={privateReportMoney("gastos-pagados", formatMoney(gastos))}
+                tone="red"
+                hidden={moneyPrivacy.isHidden("gastos-pagados")}
+                onToggleHidden={() => moneyPrivacy.toggleItem("gastos-pagados")}
+              />
               <KpiCard
                 label="Resultado"
-                value={formatMoney(utilidad)}
+                value={privateReportMoney("resultado", formatMoney(utilidad))}
                 tone={utilidad >= 0 ? "emerald" : "red"}
+                hidden={moneyPrivacy.isHidden("resultado")}
+                onToggleHidden={() => moneyPrivacy.toggleItem("resultado")}
               />
               <KpiCard
                 label="Clientes activos"
@@ -904,6 +961,7 @@ export default function ReportesPage() {
                   leftValue={ingresos}
                   rightLabel="Gastos"
                   rightValue={gastos}
+                  hideMoney={moneyPrivacy.allHidden}
                 />
               </Panel>
 
@@ -918,7 +976,10 @@ export default function ReportesPage() {
                     value={presupuestosAceptados.length.toLocaleString("es-AR")}
                     className="text-emerald-400"
                   />
-                  <MiniMetric label="Total cotizado" value={formatMoney(totalPresupuestos)} />
+                  <MiniMetric
+                    label="Total cotizado"
+                    value={privateGeneralMoney(formatMoney(totalPresupuestos))}
+                  />
                   <MiniMetric
                     label="Conversión"
                     value={`${tasaConversion.toFixed(0)}%`}
@@ -934,6 +995,7 @@ export default function ReportesPage() {
                 subtitle="Ranking por cantidad vendida"
                 rows={productosMasVendidos}
                 valueMode="quantity"
+                hideMoney={moneyPrivacy.allHidden}
                 empty="No hay productos vendidos en el periodo."
               />
 
@@ -942,6 +1004,7 @@ export default function ReportesPage() {
                 subtitle="Unidades producidas en el periodo"
                 rows={produccionPorProducto}
                 valueMode="quantity"
+                hideMoney={moneyPrivacy.allHidden}
                 empty="No hay producción registrada en el periodo."
               />
             </div>
@@ -952,8 +1015,8 @@ export default function ReportesPage() {
                   columns={["Producto", "Ventas", "Costo est.", "Margen"]}
                   rows={rentabilidadProductos.slice(0, 6).map((item) => [
                     item.producto,
-                    formatMoney(item.ventas),
-                    formatMoney(item.costoEstimado),
+                    privateGeneralMoney(formatMoney(item.ventas)),
+                    privateGeneralMoney(formatMoney(item.costoEstimado)),
                     `${item.margen.toFixed(0)}%`,
                   ])}
                   empty="No hay datos suficientes para estimar rentabilidad."
@@ -995,9 +1058,9 @@ export default function ReportesPage() {
                     formatDate(row.fecha),
                     row.tipo,
                     row.concepto,
-                    formatMoney(row.total),
-                    formatMoney(row.abonado),
-                    formatMoney(row.pendiente),
+                    privateGeneralMoney(formatMoney(row.total)),
+                    privateGeneralMoney(formatMoney(row.abonado)),
+                    privateGeneralMoney(formatMoney(row.pendiente)),
                   ])}
                   empty="No hay movimientos en el periodo."
                 />
@@ -1036,10 +1099,14 @@ function KpiCard({
   label,
   value,
   tone = "white",
+  hidden,
+  onToggleHidden,
 }: {
   label: string;
   value: string;
   tone?: "white" | "emerald" | "red" | "yellow" | "cyan";
+  hidden?: boolean;
+  onToggleHidden?: () => void;
 }) {
   const color = {
     white: "text-white",
@@ -1051,7 +1118,12 @@ function KpiCard({
 
   return (
     <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-5 md:p-6">
-      <p className="text-zinc-500 text-sm">{label}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-zinc-500 text-sm">{label}</p>
+        {onToggleHidden && typeof hidden === "boolean" && (
+          <MoneyEyeButton hidden={hidden} onClick={onToggleHidden} />
+        )}
+      </div>
       <h2 className={`text-2xl md:text-3xl font-bold mt-3 ${color}`}>
         {value}
       </h2>
@@ -1107,11 +1179,13 @@ function BarCompare({
   leftValue,
   rightLabel,
   rightValue,
+  hideMoney = false,
 }: {
   leftLabel: string;
   leftValue: number;
   rightLabel: string;
   rightValue: number;
+  hideMoney?: boolean;
 }) {
   const total = leftValue + rightValue;
   const leftWidth = total === 0 ? 0 : (leftValue / total) * 100;
@@ -1127,12 +1201,12 @@ function BarCompare({
       <div className="grid grid-cols-2 gap-4 mt-6">
         <MiniMetric
           label={leftLabel}
-          value={formatMoney(leftValue)}
+          value={privateMoneyValue(formatMoney(leftValue), hideMoney)}
           className="text-emerald-400"
         />
         <MiniMetric
           label={rightLabel}
-          value={formatMoney(rightValue)}
+          value={privateMoneyValue(formatMoney(rightValue), hideMoney)}
           className="text-red-400"
         />
       </div>
@@ -1145,12 +1219,14 @@ function RankingPanel({
   subtitle,
   rows,
   valueMode,
+  hideMoney = false,
   empty,
 }: {
   title: string;
   subtitle: string;
   rows: RankingRow[];
   valueMode: "money" | "quantity";
+  hideMoney?: boolean;
   empty: string;
 }) {
   const max = Math.max(...rows.map((row) => row.total || row.cantidad), 0);
@@ -1172,11 +1248,13 @@ function RankingPanel({
                   <p className="text-zinc-500 text-sm mt-1">
                     {valueMode === "money"
                       ? `${formatQuantity(row.cantidad)} unidades`
-                      : formatMoney(row.total)}
+                      : privateMoneyValue(formatMoney(row.total), hideMoney)}
                   </p>
                 </div>
                 <p className="text-emerald-400 font-semibold">
-                  {valueMode === "money" ? formatMoney(value) : formatQuantity(value)}
+                  {valueMode === "money"
+                    ? privateMoneyValue(formatMoney(value), hideMoney)
+                    : formatQuantity(value)}
                 </p>
               </div>
               <div className="h-2 bg-white/5 rounded-full overflow-hidden mt-4">

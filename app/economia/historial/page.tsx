@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BackButton from "@/components/BackButton";
 import { supabase } from "../../../lib/supabase";
 
 export default function HistorialMovimientosPage() {
@@ -67,13 +68,36 @@ export default function HistorialMovimientosPage() {
 
     if (!movimientoSeleccionado) return;
 
+    if (
+      movimientoSeleccionado.tipo?.toLowerCase() !== "gasto"
+    ) {
+      return;
+    }
+
+    const monto = Number(montoAbono);
+    const saldoPendiente = Number(
+      movimientoSeleccionado.saldo_pendiente || 0
+    );
+
+    if (monto <= 0) {
+      alert("Ingresá un monto válido.");
+      return;
+    }
+
+    if (monto > saldoPendiente) {
+      alert("El monto supera el saldo pendiente.");
+      return;
+    }
+
     const nuevoAbonado =
       Number(movimientoSeleccionado.monto_abonado) +
-      Number(montoAbono);
+      monto;
 
-    const nuevoPendiente =
+    const nuevoPendiente = Math.max(
       Number(movimientoSeleccionado.monto_total) -
-      nuevoAbonado;
+      nuevoAbonado,
+      0
+    );
 
     await supabase
       .from("movimientos_economia")
@@ -88,7 +112,7 @@ export default function HistorialMovimientosPage() {
       .insert([
         {
           movimiento_id: movimientoSeleccionado.id,
-          monto: Number(montoAbono),
+          monto,
           fecha: fechaAbono,
         },
       ]);
@@ -134,6 +158,11 @@ export default function HistorialMovimientosPage() {
 
   return (
     <div>
+      <BackButton
+        href="/economia"
+        label="Volver a economia"
+        showDesktop
+      />
 
       {/* Header */}
       <div className="mb-6">
@@ -215,7 +244,7 @@ export default function HistorialMovimientosPage() {
 
               {movimiento.tipo?.toLowerCase() === "gasto" && (
                 <span className="text-red-400">
-                  Gasto
+                  Salida
                 </span>
               )}
 
@@ -229,24 +258,11 @@ export default function HistorialMovimientosPage() {
 
               {movimiento.tipo?.toLowerCase() === "ingreso" && (
 
-                <button
-                  onClick={async () => {
-
-                    setMovimientoSeleccionado(movimiento);
-
-                    await cargarHistorialAbonos(
-                      movimiento.id
-                    );
-
-                    setModalHistorialAbonos(true);
-
-                  }}
-                  className="text-emerald-400 hover:text-emerald-300 transition"
-                >
+                <span className="text-emerald-400">
                   +$
                   {Number(movimiento.monto_abonado)
                     .toLocaleString("es-AR")}
-                </button>
+                </span>
 
               )}
 
@@ -293,7 +309,8 @@ export default function HistorialMovimientosPage() {
 
 )}
 
-              {movimiento.saldo_pendiente > 0 && (
+              {movimiento.tipo?.toLowerCase() === "gasto" &&
+                movimiento.saldo_pendiente > 0 && (
 
                 <button
                   onClick={() => {
@@ -377,7 +394,7 @@ export default function HistorialMovimientosPage() {
               </h2>
 
               <p className="text-zinc-500 mt-1">
-                Registrar pago parcial del gasto
+                Registrar pago parcial de la salida
               </p>
 
             </div>

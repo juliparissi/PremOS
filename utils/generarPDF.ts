@@ -247,11 +247,19 @@ export function generarPDFPresupuesto({
   transporte,
   descuento,
   iva,
+  senia,
   total,
   observaciones,
 }: any) {
 
   const doc = new jsPDF();
+  const seniaNota =
+    tipoDocumento === "NOTA DE VENTA" &&
+    estadoPago !== "Pagado" &&
+    Number(senia || 0) > 0
+      ? Number(senia)
+      : 0;
+
   if (tipoDocumento === "NOTA DE VENTA") {
 
   doc.setTextColor(200);
@@ -345,12 +353,27 @@ doc.text(
 );
 
   // TOTALES
-  doc.roundedRect(130, finalY - 5, 60, 50, 3, 3);
+  doc.roundedRect(
+    130,
+    finalY - 5,
+    60,
+    seniaNota > 0 ? 60 : 50,
+    3,
+    3
+  );
   doc.text(`TRANSPORTE: $${transporte}`, 135, finalY + 2);
 
 doc.text(`DESCUENTO: $${descuento}`, 135, finalY + 12);
 
 doc.text(`IVA: ${iva}%`, 135, finalY + 22);
+
+if (seniaNota > 0) {
+  doc.text(
+    `SEÑA: $${seniaNota.toLocaleString("es-AR")}`,
+    135,
+    finalY + 32
+  );
+}
 
   doc.setFontSize(16);
 
@@ -359,7 +382,7 @@ doc.text(`IVA: ${iva}%`, 135, finalY + 22);
 doc.text(
   `TOTAL: $${total}`,
   135,
-  finalY + 38
+  seniaNota > 0 ? finalY + 48 : finalY + 38
 );
 
   doc.setFontSize(11);

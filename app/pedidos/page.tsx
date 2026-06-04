@@ -227,6 +227,27 @@ async function cargarHistorialPagos(id: string) {
 
 }
 
+function obtenerSeniaInicial() {
+  if (
+    !pedidoSeleccionado ||
+    pedidoSeleccionado.estado_pago === "Pagado"
+  ) {
+    return 0;
+  }
+
+  const pagoInicial =
+    historialPagos.find(
+      (pago) =>
+        pago.observaciones === "Pago inicial de venta directa"
+    ) || historialPagos[historialPagos.length - 1];
+
+  return Number(
+    pagoInicial?.monto ||
+    pedidoSeleccionado.saldo_abonado ||
+    0
+  );
+}
+
 async function guardarEntrega() {
 
   if (!pedidoSeleccionado) return;
@@ -274,9 +295,7 @@ async function guardarEntrega() {
     .eq("id", presupuestoId)
     .single();
 
-  if (data) {
-    setPresupuestoOriginal(data);
-  }
+  setPresupuestoOriginal(data || null);
 
 }
 
@@ -865,6 +884,8 @@ const pedidosPaginados =
                     pedido.observaciones || "");
 
                   await cargarItemsPedido(pedido.id);
+                  setPresupuestoOriginal(null);
+
                   if (pedido.presupuesto_id) {
 
                   await cargarPresupuestoOriginal(
@@ -949,6 +970,8 @@ const pedidosPaginados =
 
   <div className="flex gap-3 mr-16">
 
+    {pedidoSeleccionado?.presupuesto_id && (
+
     <button
   onClick={() => {
 
@@ -1004,6 +1027,8 @@ const pedidosPaginados =
   Descargar presupuesto
 </button>
 
+)}
+
     {pedidoSeleccionado?.saldo_abonado > 0 ? (
 
   <button
@@ -1051,6 +1076,9 @@ const pedidosPaginados =
 
         iva:
           presupuestoOriginal?.iva || 0,
+
+        senia:
+          obtenerSeniaInicial(),
 
         total:
           pedidoSeleccionado.saldo_total,

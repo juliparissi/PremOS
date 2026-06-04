@@ -1,137 +1,118 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-
 import { useRouter } from "next/navigation";
-
+import BackButton from "@/components/BackButton";
 import { supabase } from "../../../lib/supabase";
 
-export default function NuevoMovimientoPage() {
+type Proveedor = {
+  id: string;
+  nombre: string;
+  materia_prima?: string;
+};
 
+export default function NuevoMovimientoPage() {
   const router = useRouter();
 
-  const [tipo, setTipo] = useState("gasto");
-
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [proveedorId, setProveedorId] = useState("");
   const [concepto, setConcepto] = useState("");
-  const [proveedor, setProveedor] = useState("");
-
   const [monto, setMonto] = useState("");
-
   const [montoAbonado, setMontoAbonado] = useState("");
-
   const [fecha, setFecha] = useState("");
-
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-
-    setFecha(
-      new Date()
-        .toISOString()
-        .split("T")[0]
-    );
-
+    setFecha(new Date().toISOString().split("T")[0]);
+    cargarProveedores();
   }, []);
 
-  const saldoPendiente =
-    Math.max(
-      0,
-      Number(monto || 0) -
-      Number(montoAbonado || 0)
-    );
+  const saldoPendiente = Math.max(
+    0,
+    Number(monto || 0) - Number(montoAbonado || 0)
+  );
 
-  async function guardarMovimiento(
-    e: React.FormEvent
-  ) {
+  async function cargarProveedores() {
+    const { data } = await supabase
+      .from("proveedores")
+      .select("*")
+      .order("nombre", { ascending: true });
 
+    if (data) {
+      setProveedores(data as Proveedor[]);
+    }
+  }
+
+  async function guardarMovimiento(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!concepto || !monto) {
+    const montoTotal = Number(monto || 0);
+    const abonado = Number(montoAbonado || 0);
 
-      alert("Completá los campos obligatorios");
-
+    if (!concepto || montoTotal <= 0) {
+      alert("Completá el concepto y el monto de la salida.");
       return;
+    }
 
+    if (abonado > montoTotal) {
+      alert("El monto abonado no puede superar el monto total.");
+      return;
     }
 
     setLoading(true);
 
-    const { error } = await supabase
-      .from("movimientos_economia")
-      .insert([
-  {
-    tipo,
+    const proveedorSeleccionado = proveedores.find(
+      (item) => item.id === proveedorId
+    );
 
-    concepto: concepto,
-
-    detalle:
-  tipo === "gasto"
-    ? proveedor
-    : null,
-
-    monto: Number(monto),
-
-    monto_total: Number(monto),
-
-    monto_abonado:
-      tipo === "gasto"
-        ? Number(montoAbonado || 0)
-        : Number(monto),
-
-    saldo_pendiente:
-      tipo === "gasto"
-        ? saldoPendiente
-        : 0,
-
-    fecha,
-
-  },
-])
+    const { error } = await supabase.from("movimientos_economia").insert([
+      {
+        tipo: "Gasto",
+        concepto,
+        detalle: proveedorSeleccionado?.nombre || null,
+        monto: montoTotal,
+        monto_total: montoTotal,
+        monto_abonado: abonado,
+        saldo_pendiente: saldoPendiente,
+        fecha,
+      },
+    ]);
 
     setLoading(false);
 
     if (error) {
-
       console.error(error);
-
-      alert(
-        "Error guardando movimiento"
-      );
-
+      alert("Error guardando la salida de caja");
       return;
-
     }
 
     router.push("/economia");
-
   }
 
   return (
-
     <div className="max-w-xl mx-auto">
+      <BackButton
+        href="/economia"
+        label="Volver a economia"
+        showDesktop
+      />
 
-      {/* Header */}
       <div className="mb-8">
-
         <h1 className="text-3xl font-bold">
-          Nuevo movimiento
+          Salida de caja
         </h1>
 
         <p className="text-zinc-500 mt-2">
-          Registrar ingreso o gasto
+          Registrar egresos operativos y cuentas a pagar
         </p>
-
       </div>
 
-      {/* Formulario */}
       <form
         onSubmit={guardarMovimiento}
         className="bg-[#0b1727] border border-white/5 rounded-3xl p-5 pb-10 md:pb-5 space-y-5"
       >
-
-        {/* Fecha */}
         <div>
-
           <p className="text-sm text-zinc-400 mb-2">
             Fecha
           </p>
@@ -139,44 +120,48 @@ export default function NuevoMovimientoPage() {
           <input
             type="date"
             value={fecha}
-            onChange={(e) =>
-              setFecha(e.target.value)
-            }
+            onChange={(e) => setFecha(e.target.value)}
             className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
           />
-
         </div>
 
-        {/* Tipo */}
         <div>
-
           <p className="text-sm text-zinc-400 mb-2">
-            Tipo
+            Proveedor / categoria
           </p>
 
           <select
-            value={tipo}
-            onChange={(e) =>
-              setTipo(e.target.value)
-            }
+            value={proveedorId}
+            onChange={(e) => setProveedorId(e.target.value)}
             className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
           >
-
-            <option value="gasto">
-              Gasto
+            <option value="">
+              Sin proveedor asignado
             </option>
 
-            <option value="ingreso">
-              Ingreso
-            </option>
-
+            {proveedores.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.nombre}
+                {item.materia_prima ? ` - ${item.materia_prima}` : ""}
+              </option>
+            ))}
           </select>
 
+          <div className="flex justify-between gap-3 mt-2 text-xs">
+            <span className="text-zinc-500">
+              Para sueldos u otros egresos generales podés crear una categoria.
+            </span>
+
+            <Link
+              href="/economia/proveedores"
+              className="text-emerald-400 hover:text-emerald-300 whitespace-nowrap"
+            >
+              Alta proveedor
+            </Link>
+          </div>
         </div>
 
-        {/* Concepto */}
         <div>
-
           <p className="text-sm text-zinc-400 mb-2">
             Concepto
           </p>
@@ -185,143 +170,59 @@ export default function NuevoMovimientoPage() {
             type="text"
             placeholder="Descripción"
             value={concepto}
-            onChange={(e) =>
-              setConcepto(e.target.value)
-            }
+            onChange={(e) => setConcepto(e.target.value)}
             className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
           />
-
         </div>
 
-        {/* Campos gasto */}
-        {tipo === "gasto" && (
+        <div>
+          <p className="text-sm text-zinc-400 mb-2">
+            Monto total
+          </p>
 
-          <>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="Monto total"
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+            className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
+          />
+        </div>
 
-{/* Proveedor */}
-<div>
+        <div>
+          <p className="text-sm text-zinc-400 mb-2">
+            Monto abonado
+          </p>
 
-  <p className="text-sm text-zinc-400 mb-2">
-    Proveedor
-  </p>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="Monto abonado"
+            value={montoAbonado}
+            onChange={(e) => setMontoAbonado(e.target.value)}
+            className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
+          />
+        </div>
 
-  <input
-    type="text"
-    placeholder="Proveedor"
-    value={proveedor}
-    onChange={(e) =>
-      setProveedor(e.target.value)
-    }
-    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
-  />
+        <div className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-4">
+          <p className="text-sm text-zinc-400 mb-2">
+            Saldo pendiente
+          </p>
 
-</div>
+          <h3 className="text-xl font-bold text-yellow-400">
+            ${saldoPendiente.toLocaleString("es-AR")}
+          </h3>
+        </div>
 
-            {/* Monto total */}
-            <div>
-
-              <p className="text-sm text-zinc-400 mb-2">
-                Monto total
-              </p>
-
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Monto total"
-                value={monto}
-                onChange={(e) =>
-                  setMonto(e.target.value)
-                }
-                className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
-              />
-
-            </div>
-
-            {/* Monto abonado */}
-            <div>
-
-              <p className="text-sm text-zinc-400 mb-2">
-                Monto abonado
-              </p>
-
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Monto abonado"
-                value={montoAbonado}
-                onChange={(e) =>
-                  setMontoAbonado(
-                    e.target.value
-                  )
-                }
-                className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
-              />
-
-            </div>
-
-            {/* Saldo pendiente */}
-            <div className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-4">
-
-              <p className="text-sm text-zinc-400 mb-2">
-                Saldo pendiente
-              </p>
-
-              <h3 className="text-xl font-bold text-yellow-400">
-
-                $
-                {saldoPendiente.toLocaleString(
-                  "es-AR"
-                )}
-
-              </h3>
-
-            </div>
-
-          </>
-
-        )}
-
-        {/* Ingreso */}
-        {tipo === "ingreso" && (
-
-          <div>
-
-            <p className="text-sm text-zinc-400 mb-2">
-              Monto
-            </p>
-
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Monto"
-              value={monto}
-              onChange={(e) =>
-                setMonto(e.target.value)
-              }
-              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
-            />
-
-          </div>
-
-        )}
-
-        {/* Botón */}
-<button
-  type="submit"
-  disabled={loading}
-  className="w-full bg-emerald-500 hover:bg-emerald-400 transition py-3 rounded-2xl font-medium text-black"
->
-
-  {loading
-    ? "Guardando..."
-    : "Guardar movimiento"}
-
-</button>
-
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-emerald-500 hover:bg-emerald-400 transition py-3 rounded-2xl font-medium text-black disabled:opacity-60"
+        >
+          {loading ? "Guardando..." : "Guardar salida"}
+        </button>
       </form>
-
     </div>
-
   );
-
 }

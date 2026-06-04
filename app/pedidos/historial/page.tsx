@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BackButton from "@/components/BackButton";
 import { supabase } from "../../../lib/supabase";
 import { generarPDFPresupuesto } from "../../../utils/generarPDF";
 
@@ -79,6 +80,28 @@ export default function HistorialPedidosPage() {
     }
 
   }
+
+function obtenerSeniaInicial() {
+  if (
+    !pedidoSeleccionado ||
+    pedidoSeleccionado.estado_pago === "Pagado"
+  ) {
+    return 0;
+  }
+
+  const pagoInicial =
+    historialPagos.find(
+      (pago) =>
+        pago.observaciones === "Pago inicial de venta directa"
+    ) || historialPagos[historialPagos.length - 1];
+
+  return Number(
+    pagoInicial?.monto ||
+    pedidoSeleccionado.saldo_abonado ||
+    0
+  );
+}
+
 async function cargarPresupuestoOriginal(
   presupuestoId: string
 ) {
@@ -89,9 +112,7 @@ async function cargarPresupuestoOriginal(
     .eq("id", presupuestoId)
     .single();
 
-  if (data) {
-    setPresupuestoOriginal(data);
-  }
+  setPresupuestoOriginal(data || null);
 
 }
 
@@ -124,6 +145,11 @@ const pedidosPaginados =
 
   return (
     <div>
+      <BackButton
+        href="/pedidos"
+        label="Volver a pedidos"
+        showDesktop
+      />
 
       {/* Header */}
       <div className="mb-8">
@@ -248,6 +274,8 @@ const pedidosPaginados =
                   await cargarHistorialPagos(
                     pedido.id
                   );
+
+                  setPresupuestoOriginal(null);
                   
                   if (pedido.presupuesto_id) {
 
@@ -340,6 +368,8 @@ const pedidosPaginados =
 
               <div className="flex gap-3 mr-16">
 
+                {pedidoSeleccionado?.presupuesto_id && (
+
                 <button
   onClick={() => {
 
@@ -397,6 +427,8 @@ const pedidosPaginados =
   Descargar presupuesto
 </button>
 
+)}
+
                 <button
   onClick={() => {
 
@@ -440,6 +472,9 @@ const pedidosPaginados =
         ),
 
       iva: presupuestoOriginal?.iva || 0,
+
+      senia:
+        obtenerSeniaInicial(),
 
       total: pedidoSeleccionado.saldo_total,
 

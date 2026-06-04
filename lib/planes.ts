@@ -14,6 +14,7 @@ export type PremosModule =
   | "economia"
   | "suministro"
   | "stock"
+  | "soporte"
   | "configuracion";
 
 export const planLabels: Record<PremosPlan, string> = {
@@ -31,6 +32,7 @@ export const planModules: Record<PremosPlan, PremosModule[]> = {
     "ventas",
     "pedidos",
     "economia",
+    "soporte",
     "configuracion",
   ],
   full: [
@@ -46,6 +48,7 @@ export const planModules: Record<PremosPlan, PremosModule[]> = {
     "economia",
     "suministro",
     "stock",
+    "soporte",
     "configuracion",
   ],
   pro: [
@@ -62,6 +65,7 @@ export const planModules: Record<PremosPlan, PremosModule[]> = {
     "economia",
     "suministro",
     "stock",
+    "soporte",
     "configuracion",
   ],
 };
@@ -80,6 +84,7 @@ export const routeModules: Record<string, PremosModule> = {
   "/economia": "economia",
   "/suministro": "suministro",
   "/stock": "stock",
+  "/soporte": "soporte",
   "/configuracion": "configuracion",
 };
 

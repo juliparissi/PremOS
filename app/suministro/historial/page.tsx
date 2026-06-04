@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BackButton from "@/components/BackButton";
 import { supabase } from "@/lib/supabase";
 
 const ITEMS_POR_PAGINA = 20;
@@ -213,6 +214,11 @@ export default function HistorialComprasPage() {
   return (
 
     <div className="space-y-6">
+      <BackButton
+        href="/suministro"
+        label="Volver a suministro"
+        showDesktop
+      />
 
       <div>
 

@@ -429,14 +429,14 @@ export default function ListaPreciosPage() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[290px_1fr]">
-        <aside className="bg-[#0b1727] border border-white/5 rounded-3xl p-5 h-fit">
+      <div className="space-y-6">
+        <aside className="bg-[#0b1727] border border-white/5 rounded-3xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold">Listas</h2>
             <span className="text-xs text-zinc-500">{listas.length}</span>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {listas.map((lista) => (
               <button
                 key={lista.id}
@@ -444,7 +444,7 @@ export default function ListaPreciosPage() {
                   setListaActivaId(lista.id);
                   await cargarItems(lista.id);
                 }}
-                className={`w-full text-left px-4 py-3 rounded-2xl border transition ${
+                className={`w-full min-h-[92px] text-left px-4 py-3 rounded-2xl border transition ${
                   lista.id === listaActivaId
                     ? "bg-cyan-500/15 border-cyan-400/30 text-cyan-100"
                     : "bg-white/5 border-white/5 hover:bg-white/10"
@@ -458,7 +458,7 @@ export default function ListaPreciosPage() {
             ))}
 
             {!cargando && listas.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-sm text-zinc-500">
+              <div className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-sm text-zinc-500 sm:col-span-2 lg:col-span-3 xl:col-span-4">
                 Todavia no hay listas. Crea una lista o usa las listas base.
               </div>
             )}

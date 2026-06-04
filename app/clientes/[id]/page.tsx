@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import BackButton from "@/components/BackButton";
 import { supabase } from "../../../lib/supabase";
 
 export default function ClienteDetallePage() {
@@ -177,6 +178,11 @@ export default function ClienteDetallePage() {
 
   return (
     <div>
+      <BackButton
+        href="/clientes"
+        label="Volver a clientes"
+        showDesktop
+      />
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">

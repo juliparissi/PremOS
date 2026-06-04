@@ -7,13 +7,23 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
 
+type Proveedor = {
+  id: string;
+  nombre: string;
+  materia_prima?: string;
+  telefono?: string;
+  mail?: string;
+  cuit?: string;
+  observaciones?: string;
+};
+
 export default function EconomiaPage() {
 
   const router = useRouter();  
   const [movimientos, setMovimientos] = useState<any[]>([]);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
 
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [tipoMovimiento, setTipoMovimiento] = useState("Ingreso");
 
   const movimientosRecientes = movimientos.slice(0, 10);
 
@@ -21,7 +31,7 @@ export default function EconomiaPage() {
   const [montoAbonado, setMontoAbonado] = useState("");
 
   const [concepto, setConcepto] = useState("");
-  const [proveedor, setProveedor] = useState("");
+  const [proveedorId, setProveedorId] = useState("");
 
 
   const [fechaMovimiento, setFechaMovimiento] = useState(
@@ -61,33 +71,59 @@ export default function EconomiaPage() {
 
   }
 
+  async function cargarProveedores() {
+    const { data } = await supabase
+      .from("proveedores")
+      .select("*")
+      .order("nombre", { ascending: true });
+
+    if (data) {
+      setProveedores(data as Proveedor[]);
+    }
+  }
+
   async function guardarMovimiento() {
+    const proveedorSeleccionado =
+      proveedores.find(
+        (item) => item.id === proveedorId
+      );
+
+    const monto = Number(montoTotal || 0);
+    const abonado = Number(montoAbonado || 0);
+
+    if (!concepto || monto <= 0) {
+      alert("Completá el concepto y el monto de la salida.");
+      return;
+    }
+
+    if (abonado > monto) {
+      alert("El monto abonado no puede superar el monto total.");
+      return;
+    }
 
     await supabase
       .from("movimientos_economia")
       .insert([
         {
-          tipo: tipoMovimiento,
+          tipo: "Gasto",
 
           concepto,
 
           monto_total:
-            Number(montoTotal) || 0,
+            monto,
 
           monto_abonado:
-            Number(montoAbonado) || 0,
+            abonado,
 
           saldo_pendiente:
             Math.max(
-              Number(montoTotal || 0) -
-              Number(montoAbonado || 0),
+              monto -
+              abonado,
               0
             ),
 
           detalle:
-            tipoMovimiento === "Gasto"
-              ? proveedor
-              : "",
+            proveedorSeleccionado?.nombre || "",
 
           fecha: fechaMovimiento,
         },
@@ -96,7 +132,7 @@ export default function EconomiaPage() {
     setModalAbierto(false);
 
     setConcepto("");
-    setProveedor("");
+    setProveedorId("");
     setMontoTotal("");
     setMontoAbonado("");
 
@@ -108,13 +144,36 @@ export default function EconomiaPage() {
 
     if (!movimientoSeleccionado) return;
 
+    if (
+      movimientoSeleccionado.tipo?.toLowerCase() !== "gasto"
+    ) {
+      return;
+    }
+
+    const monto = Number(montoAbono);
+    const saldoPendiente = Number(
+      movimientoSeleccionado.saldo_pendiente || 0
+    );
+
+    if (monto <= 0) {
+      alert("Ingresá un monto válido.");
+      return;
+    }
+
+    if (monto > saldoPendiente) {
+      alert("El monto supera el saldo pendiente.");
+      return;
+    }
+
     const nuevoAbonado =
       Number(movimientoSeleccionado.monto_abonado) +
-      Number(montoAbono);
+      monto;
 
-    const nuevoPendiente =
+    const nuevoPendiente = Math.max(
       Number(movimientoSeleccionado.monto_total) -
-      nuevoAbonado;
+      nuevoAbonado,
+      0
+    );
 
     await supabase
       .from("movimientos_economia")
@@ -130,7 +189,7 @@ export default function EconomiaPage() {
     {
       movimiento_id: movimientoSeleccionado.id,
 
-      monto: Number(montoAbono),
+      monto,
 
       fecha: fechaAbono,
     },
@@ -168,6 +227,7 @@ async function cargarHistorialAbonos(
 
   useEffect(() => {
     cargarMovimientos();
+    cargarProveedores();
   }, []);
 
   
@@ -203,7 +263,7 @@ async function cargarHistorialAbonos(
     href="/economia/nuevo"
     className="md:hidden bg-emerald-500 hover:bg-emerald-400 transition px-4 py-3 rounded-2xl font-medium text-sm text-center text-black"
   >
-    Registrar movimiento
+    Salida de caja
   </Link>
 
   {/* Desktop */}
@@ -211,10 +271,17 @@ async function cargarHistorialAbonos(
     onClick={() => setModalAbierto(true)}
     className="hidden md:block bg-emerald-500 hover:bg-emerald-400 transition px-4 py-3 rounded-2xl font-medium text-base text-black"
   >
-    Registrar movimiento
+    Salida de caja
   </button>
 
 </>
+
+          <Link
+            href="/economia/proveedores"
+            className="bg-white/5 hover:bg-white/10 transition px-4 py-3 rounded-2xl border border-white/5 text-sm md:text-base text-center"
+          >
+            Alta proveedor
+          </Link>
 
           <Link
             href="/economia/historial"
@@ -258,7 +325,7 @@ async function cargarHistorialAbonos(
 
           {movimiento.tipo?.toLowerCase() === "gasto" && (
             <span className="text-red-400">
-              Gasto
+              Salida de caja
             </span>
           )}
 
@@ -277,7 +344,9 @@ async function cargarHistorialAbonos(
         <div className="flex justify-between">
 
           <span className="text-white">
-            Abonado
+            {movimiento.tipo?.toLowerCase() === "ingreso"
+              ? "Cobrado"
+              : "Abonado"}
           </span>
 
           <span className="text-white">
@@ -294,7 +363,9 @@ async function cargarHistorialAbonos(
         <div className="flex justify-between">
 
           <span className="text-white">
-            Saldo pendiente
+            {movimiento.tipo?.toLowerCase() === "ingreso"
+              ? "Saldo a cobrar"
+              : "Saldo pendiente"}
           </span>
 
           <span className="text-yellow-400">
@@ -369,7 +440,7 @@ async function cargarHistorialAbonos(
 
               {movimiento.tipo?.toLowerCase() === "gasto" && (
                 <span className="text-red-400">
-                  Gasto
+                  Salida
                 </span>
               )}
 
@@ -383,24 +454,11 @@ async function cargarHistorialAbonos(
 
               {movimiento.tipo?.toLowerCase() === "ingreso" && (
 
-  <button
-    onClick={async () => {
-
-      setMovimientoSeleccionado(movimiento);
-
-      await cargarHistorialAbonos(
-        movimiento.id
-      );
-
-      setModalHistorialAbonos(true);
-
-    }}
-    className="text-emerald-400 hover:text-emerald-300 transition"
-  >
+  <span className="text-emerald-400">
     +$
     {Number(movimiento.monto_abonado)
       .toLocaleString("es-AR")}
-  </button>
+  </span>
 
 )}
 
@@ -453,8 +511,8 @@ async function cargarHistorialAbonos(
           setModalAbono(true);
 
         }}
-        className="bg-white/5 hover:bg-white/10 transition px-3 py-2 rounded-xl border border-white/5 text-sm"
-      >
+      className="bg-white/5 hover:bg-white/10 transition px-3 py-2 rounded-xl border border-white/5 text-sm"
+    >
         Abonar
       </button>
 
@@ -495,11 +553,11 @@ async function cargarHistorialAbonos(
             <div className="mb-6">
 
               <h2 className="text-3xl font-bold">
-                Registrar movimiento
+                Registrar salida de caja
               </h2>
 
               <p className="text-zinc-500 mt-1">
-                Nuevo movimiento financiero
+                Egreso operativo, proveedor o cuenta a pagar
               </p>
 
             </div>
@@ -522,52 +580,49 @@ async function cargarHistorialAbonos(
 
             </div>
 
-            {/* Tipo */}
-            <div className="mb-6">
-
-              <label className="text-zinc-500 text-sm">
-                Tipo
-              </label>
-
-              <select
-                value={tipoMovimiento}
-                onChange={(e) => setTipoMovimiento(e.target.value)}
-                className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
-              >
-
-                <option>
-                  Ingreso
-                </option>
-
-                <option>
-                  Gasto
-                </option>
-
-              </select>
-
-            </div>
-
             {/* Proveedor */}
-            {tipoMovimiento === "Gasto" && (
-
               <div className="mb-6">
 
                 <label className="text-zinc-500 text-sm">
-                  Proveedor
+                  Proveedor / categoria
                 </label>
 
-                <input
-                  placeholder="Agregar proveedor..."
-                  value={proveedor}
+                <select
+                  value={proveedorId}
                   onChange={(e) =>
-                    setProveedor(e.target.value)
+                    setProveedorId(e.target.value)
                   }
                   className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
-                />
+                >
+                  <option value="">
+                    Sin proveedor asignado
+                  </option>
+
+                  {proveedores.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.nombre}
+                      {item.materia_prima
+                        ? ` - ${item.materia_prima}`
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="flex justify-between gap-3 mt-2 text-xs">
+                  <span className="text-zinc-500">
+                    Para sueldos u otros egresos generales podés crear una
+                    categoria como proveedor.
+                  </span>
+
+                  <Link
+                    href="/economia/proveedores"
+                    className="text-emerald-400 hover:text-emerald-300 whitespace-nowrap"
+                  >
+                    Alta proveedor
+                  </Link>
+                </div>
 
               </div>
-
-            )}
 
             {/* Concepto */}
             <div className="mb-6">
@@ -650,7 +705,7 @@ async function cargarHistorialAbonos(
                 onClick={guardarMovimiento}
                 className="bg-emerald-500 hover:bg-emerald-400 transition px-5 py-3 rounded-2xl font-medium"
               >
-                Guardar movimiento
+                Guardar salida
               </button>
 
             </div>
@@ -684,7 +739,7 @@ async function cargarHistorialAbonos(
               </h2>
 
               <p className="text-zinc-500 mt-1">
-                Registrar pago parcial del gasto
+                Registrar pago parcial de la salida
               </p>
 
             </div>
@@ -831,7 +886,7 @@ async function cargarHistorialAbonos(
     </h2>
 
     <p className="text-zinc-500 text-sm mt-1">
-      Gastos con saldo pendiente
+      Salidas con saldo pendiente
     </p>
 
   </div>

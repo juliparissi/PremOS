@@ -8,6 +8,7 @@ import {
   saveEmpresaConfig,
   type EmpresaConfig,
 } from "../../lib/empresa";
+import { checkPremosLicense, licenseConfigured } from "../../lib/licencia";
 import { normalizePlan, planLabels, type PremosPlan } from "../../lib/planes";
 import { supabase } from "../../lib/supabase";
 
@@ -19,6 +20,8 @@ export default function ConfiguracionPage() {
   const [password, setPassword] = useState("");
   const [passwordConfirmacion, setPasswordConfirmacion] = useState("");
   const [passwordMensaje, setPasswordMensaje] = useState("");
+  const [planAdministrado, setPlanAdministrado] =
+    useState(licenseConfigured);
 
   useEffect(() => {
     setConfig(getEmpresaConfig());
@@ -28,6 +31,22 @@ export default function ConfiguracionPage() {
         ? "light"
         : "dark"
     );
+
+    async function cargarPlanLicencia() {
+      if (!licenseConfigured) return;
+
+      const result = await checkPremosLicense();
+
+      if (result.plan) {
+        const licensePlan = normalizePlan(result.plan);
+        setPlan(licensePlan);
+        window.localStorage.setItem("premos_plan", licensePlan);
+      }
+
+      setPlanAdministrado(true);
+    }
+
+    cargarPlanLicencia();
   }, []);
 
   function updateField(field: keyof EmpresaConfig, value: string) {
@@ -39,7 +58,11 @@ export default function ConfiguracionPage() {
 
   function guardarConfiguracion() {
     saveEmpresaConfig(config);
-    window.localStorage.setItem("premos_plan", plan);
+
+    if (!planAdministrado) {
+      window.localStorage.setItem("premos_plan", plan);
+    }
+
     window.localStorage.setItem("premos_theme", theme);
     document.documentElement.dataset.theme = theme;
 
@@ -168,21 +191,32 @@ export default function ConfiguracionPage() {
                 Plan activo
               </h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {(["lite", "full", "pro"] as PremosPlan[]).map((item) => (
-                  <button
-                    key={item}
-                    onClick={() => setPlan(item)}
-                    className={`rounded-2xl border px-4 py-4 transition ${
-                      plan === item
-                        ? "bg-emerald-500 text-black border-emerald-500"
-                        : "bg-white/5 border-white/5 text-zinc-300 hover:bg-white/10"
-                    }`}
-                  >
-                    {planLabels[item]}
-                  </button>
-                ))}
-              </div>
+              {planAdministrado ? (
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-5 py-4">
+                  <p className="text-sm text-zinc-400">
+                    Plan asignado desde el panel administrador
+                  </p>
+                  <p className="text-2xl font-bold text-emerald-300 mt-2">
+                    {planLabels[plan]}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(["lite", "full", "pro"] as PremosPlan[]).map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => setPlan(item)}
+                      className={`rounded-2xl border px-4 py-4 transition ${
+                        plan === item
+                          ? "bg-emerald-500 text-black border-emerald-500"
+                          : "bg-white/5 border-white/5 text-zinc-300 hover:bg-white/10"
+                      }`}
+                    >
+                      {planLabels[item]}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <p className="text-zinc-500 text-sm mt-4">
                 Lite habilita gestion basica comercial. Full suma produccion, stock, suministros, reportes y listas de precios. Pro suma el asistente IA con consultas mensuales.
@@ -267,7 +301,7 @@ export default function ConfiguracionPage() {
 
             {guardado && (
               <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl p-4 text-sm">
-                Configuración guardada. Recargá la pantalla para ver cambios de plan en el menú.
+                Configuración guardada.
               </div>
             )}
           </section>

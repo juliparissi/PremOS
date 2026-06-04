@@ -28,6 +28,24 @@ Julian Parissi
 
 Se debe correr bajo node.js 
 
+## Licencia comercial
+
+Para que una instalacion de PremOS pueda activarse o suspenderse desde el
+panel administrador, configurar estas variables en `.env.local`:
+
+```env
+NEXT_PUBLIC_PREMOS_LICENSE_API_URL=https://admin.tudominio.com/api/licencias
+NEXT_PUBLIC_PREMOS_LICENSE_KEY=premos_cliente_001
+NEXT_PUBLIC_PREMOS_SUPPORT_API_URL=https://admin.tudominio.com/api/soporte/tickets
+```
+
+La clave debe coincidir con el campo `license_key` cargado en el panel admin.
+Si el cliente esta activo o en demo y no vencio, el sistema queda habilitado.
+Si esta suspendido, vencido o la licencia no existe, PremOS muestra una
+pantalla de servicio suspendido.
+
+El modulo Soporte usa la misma licencia para enviar tickets al panel admin.
+
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 

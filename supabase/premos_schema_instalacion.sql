@@ -24,6 +24,18 @@ create table if not exists public.clientes (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.proveedores (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null unique,
+  materia_prima text,
+  telefono text,
+  mail text,
+  cuit text,
+  observaciones text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.productos (
   id uuid primary key default gen_random_uuid(),
   producto text not null,
@@ -243,6 +255,7 @@ create table if not exists public.configuracion_empresa (
 );
 
 create index if not exists clientes_nombre_idx on public.clientes(nombre);
+create index if not exists proveedores_nombre_idx on public.proveedores(nombre);
 create index if not exists productos_nombre_idx on public.productos(producto, modelo, color);
 create index if not exists listas_precios_nombre_idx on public.listas_precios(nombre);
 create index if not exists lista_precios_items_lista_idx on public.lista_precios_items(lista_id);
@@ -263,6 +276,11 @@ create index if not exists produccion_fecha_idx on public.produccion(fecha);
 drop trigger if exists clientes_set_updated_at on public.clientes;
 create trigger clientes_set_updated_at
 before update on public.clientes
+for each row execute function public.set_updated_at();
+
+drop trigger if exists proveedores_set_updated_at on public.proveedores;
+create trigger proveedores_set_updated_at
+before update on public.proveedores
 for each row execute function public.set_updated_at();
 
 drop trigger if exists productos_set_updated_at on public.productos;
@@ -331,6 +349,7 @@ declare
 begin
   foreach table_name in array array[
     'clientes',
+    'proveedores',
     'productos',
     'listas_precios',
     'lista_precios_items',

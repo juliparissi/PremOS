@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import BackButton from "@/components/BackButton";
+import {
+  MoneyEyeButton,
+  privateMoneyValue,
+  useMoneyPrivacy,
+} from "@/components/MoneyPrivacy";
 
 export default function ResumenPage() {
 
@@ -36,6 +41,8 @@ export default function ResumenPage() {
 
   const [gastosTotales, setGastosTotales] =
     useState(0);
+
+  const moneyPrivacy = useMoneyPrivacy("premos_resumen_saldos");
 
   const [clientesConDeuda, setClientesConDeuda] =
     useState(0);
@@ -370,15 +377,26 @@ async function eliminarNota(id: string) {
     <div className="min-h-screen overflow-y-auto pb-24">
 
       {/* Header */}
-      <div className="mb-8">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
 
-        <h1 className="text-3xl font-bold">
-          Resumen general
-        </h1>
+        <div>
 
-        <p className="text-zinc-500 mt-1">
-          Estado general del sistema PremOS
-        </p>
+          <h1 className="text-3xl font-bold">
+            Resumen general
+          </h1>
+
+          <p className="text-zinc-500 mt-1">
+            Estado general del sistema PremOS
+          </p>
+
+        </div>
+
+        <button
+          onClick={moneyPrivacy.toggleAll}
+          className="w-fit bg-white/5 hover:bg-white/10 transition px-4 py-3 rounded-2xl border border-white/5 text-sm"
+        >
+          {moneyPrivacy.allHidden ? "Mostrar saldos" : "Ocultar saldos"}
+        </button>
 
       </div>
 
@@ -465,31 +483,36 @@ async function eliminarNota(id: string) {
 
             </div>
 
-            <button
-              onClick={() => {
-                setFiltroActivo("ingresos");
-                setModalFiltroFinanciero(true);
-              }}
-              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-cyan-300 transition flex items-center justify-center"
-              aria-label="Filtrar dinero ingresado por fecha"
-              title="Filtrar por fecha"
-            >
-              <span className="w-4 h-4 rounded-[3px] border border-cyan-300 relative block">
-                <span className="absolute left-0 right-0 top-[3px] border-t border-cyan-300" />
-                <span className="absolute left-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
-                <span className="absolute right-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
-              </span>
-            </button>
+            <div className="flex gap-2">
+              <MoneyEyeButton
+                hidden={moneyPrivacy.isHidden("dinero-ingresado")}
+                onClick={() => moneyPrivacy.toggleItem("dinero-ingresado")}
+              />
+
+              <button
+                onClick={() => {
+                  setFiltroActivo("ingresos");
+                  setModalFiltroFinanciero(true);
+                }}
+                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-cyan-300 transition flex items-center justify-center"
+                aria-label="Filtrar dinero ingresado por fecha"
+                title="Filtrar por fecha"
+              >
+                <span className="w-4 h-4 rounded-[3px] border border-cyan-300 relative block">
+                  <span className="absolute left-0 right-0 top-[3px] border-t border-cyan-300" />
+                  <span className="absolute left-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
+                  <span className="absolute right-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
+                </span>
+              </button>
+            </div>
 
           </div>
 
           <h2 className="text-3xl font-bold mt-4 text-emerald-400">
 
-            $
-            {Number(
-              dineroIngresado
-            ).toLocaleString(
-              "es-AR"
+            {privateMoneyValue(
+              `$${Number(dineroIngresado).toLocaleString("es-AR")}`,
+              moneyPrivacy.isHidden("dinero-ingresado")
             )}
 
           </h2>
@@ -499,17 +522,24 @@ async function eliminarNota(id: string) {
         {/* Saldo pendiente */}
         <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">
 
-          <p className="text-zinc-500">
-            Saldo pendiente
-          </p>
+          <div className="flex items-start justify-between gap-3">
+
+            <p className="text-zinc-500">
+              Saldo pendiente
+            </p>
+
+            <MoneyEyeButton
+              hidden={moneyPrivacy.isHidden("saldo-pendiente")}
+              onClick={() => moneyPrivacy.toggleItem("saldo-pendiente")}
+            />
+
+          </div>
 
           <h2 className="text-3xl font-bold mt-4 text-yellow-400">
 
-            $
-            {Number(
-              saldoPendiente
-            ).toLocaleString(
-              "es-AR"
+            {privateMoneyValue(
+              `$${Number(saldoPendiente).toLocaleString("es-AR")}`,
+              moneyPrivacy.isHidden("saldo-pendiente")
             )}
 
           </h2>
@@ -536,31 +566,36 @@ async function eliminarNota(id: string) {
 
             </div>
 
-            <button
-              onClick={() => {
-                setFiltroActivo("gastos");
-                setModalFiltroFinanciero(true);
-              }}
-              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-cyan-300 transition flex items-center justify-center"
-              aria-label="Filtrar gastos registrados por fecha"
-              title="Filtrar por fecha"
-            >
-              <span className="w-4 h-4 rounded-[3px] border border-cyan-300 relative block">
-                <span className="absolute left-0 right-0 top-[3px] border-t border-cyan-300" />
-                <span className="absolute left-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
-                <span className="absolute right-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
-              </span>
-            </button>
+            <div className="flex gap-2">
+              <MoneyEyeButton
+                hidden={moneyPrivacy.isHidden("gastos-registrados")}
+                onClick={() => moneyPrivacy.toggleItem("gastos-registrados")}
+              />
+
+              <button
+                onClick={() => {
+                  setFiltroActivo("gastos");
+                  setModalFiltroFinanciero(true);
+                }}
+                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-cyan-300 transition flex items-center justify-center"
+                aria-label="Filtrar gastos registrados por fecha"
+                title="Filtrar por fecha"
+              >
+                <span className="w-4 h-4 rounded-[3px] border border-cyan-300 relative block">
+                  <span className="absolute left-0 right-0 top-[3px] border-t border-cyan-300" />
+                  <span className="absolute left-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
+                  <span className="absolute right-[3px] top-[-3px] w-[2px] h-[5px] bg-cyan-300 rounded-full" />
+                </span>
+              </button>
+            </div>
 
           </div>
 
           <h2 className="text-3xl font-bold mt-4 text-red-400">
 
-            $
-            {Number(
-              gastosTotales
-            ).toLocaleString(
-              "es-AR"
+            {privateMoneyValue(
+              `$${Number(gastosTotales).toLocaleString("es-AR")}`,
+              moneyPrivacy.isHidden("gastos-registrados")
             )}
 
           </h2>
