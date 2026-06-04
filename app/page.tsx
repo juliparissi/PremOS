@@ -115,7 +115,7 @@ export default function HomePage() {
           {/* Footer */}
 <div className="absolute -bottom-8 left-[5px] text-center w-full text-zinc-500 text-xs">
 
-  © Todos los derechos reservados de PremOS a BaldosasDuramax
+              © Todos los derechos reservados a PremOS
 
 </div>
 
