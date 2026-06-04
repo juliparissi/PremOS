@@ -195,23 +195,42 @@ function agregarEncabezado(
   fecha: string
 ) {
   const empresaConfig = getEmpresaConfig();
-  const logo = new Image();
-  logo.src = empresaConfig.logo;
+  const datosEmpresa = [
+    empresaConfig.direccion,
+    empresaConfig.localidad,
+    empresaConfig.telefono,
+    empresaConfig.email,
+  ].filter(Boolean);
 
-  doc.addImage(
-    logo,
-    "PNG",
-    10,
-    28,
-    35,
-    20
-  );
+  if (empresaConfig.logo) {
+    try {
+      const logo = new Image();
+      logo.src = empresaConfig.logo;
+
+      doc.addImage(
+        logo,
+        "PNG",
+        10,
+        28,
+        35,
+        20
+      );
+    } catch {
+      // Si el logo no esta cargado o no es compatible, el PDF sigue saliendo.
+    }
+  }
+
+  if (empresaConfig.nombre) {
+    doc.setFontSize(12);
+    doc.text(empresaConfig.nombre, 10, 24);
+  }
 
   doc.setFontSize(10);
-  doc.text(empresaConfig.direccion, 70, 32);
-  doc.text(empresaConfig.localidad, 60, 39);
-  doc.text(empresaConfig.telefono, 77, 46);
-  doc.text(empresaConfig.email, 63, 53);
+  datosEmpresa.forEach((dato, index) => {
+    doc.text(dato, 70, 32 + index * 7, {
+      align: "center",
+    });
+  });
 
   doc.roundedRect(125, 26, 70, 35, 3, 3);
 

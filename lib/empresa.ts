@@ -10,12 +10,12 @@ export type EmpresaConfig = {
 };
 
 export const empresaConfig: EmpresaConfig = {
-  nombre: "Baldosas Duramax",
-  direccion: "GENERAL GUIDO 551",
-  localidad: "C.P. 1629, PILAR - BUENOS AIRES",
-  telefono: "1133172541",
-  email: "ventas@baldosasduramax.com",
-  logo: "/logo.png",
+  nombre: "",
+  direccion: "",
+  localidad: "",
+  telefono: "",
+  email: "",
+  logo: "",
   cuit: "",
   colorPrincipal: "#10b981",
 };
