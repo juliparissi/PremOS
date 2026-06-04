@@ -119,6 +119,7 @@ create table if not exists public.pedidos (
   estado_pago text not null default 'Pendiente',
   observaciones text,
   fecha_inicio_produccion date,
+  forma_entrega text not null default 'Retiro de fabrica',
   con_factura boolean not null default false,
   numero_factura text,
   created_at timestamptz not null default now(),

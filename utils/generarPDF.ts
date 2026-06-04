@@ -133,6 +133,24 @@ type ListaPreciosPDF = {
   }>;
 };
 
+type RemitoEnvioPDF = {
+  numero: string;
+  fecha: string;
+  fechaEntrega?: string;
+  cliente: string;
+  telefono?: string;
+  direccion?: string;
+  formaEntrega?: string;
+  observaciones?: string;
+  items: Array<{
+    producto?: string;
+    modelo?: string;
+    color?: string;
+    cantidad?: number | string;
+    unidad?: string;
+  }>;
+};
+
 const reporteTitulos = {
   completo: "REPORTE GENERAL",
   finanzas: "REPORTE INGRESOS Y GASTOS",
@@ -411,6 +429,84 @@ doc.setFontSize(11);
   // DESCARGAR
   doc.save(`${numero}.pdf`);
 
+}
+
+export function generarPDFRemitoEnvio(data: RemitoEnvioPDF) {
+  const doc = new jsPDF();
+
+  doc.setTextColor(220);
+  doc.setFontSize(72);
+  doc.text("REMITO DE ENVIO", 28, 178, {
+    angle: 45,
+  });
+  doc.setTextColor(0);
+
+  agregarEncabezado(
+    doc,
+    "REMITO DE ENVIO",
+    data.numero,
+    formatDate(data.fecha)
+  );
+
+  doc.setFontSize(14);
+  doc.text("DATOS DEL CLIENTE", 20, 80);
+  doc.roundedRect(15, 72, 180, 42, 3, 3);
+
+  doc.setFontSize(11);
+  doc.text(`NOMBRE: ${data.cliente || "-"}`, 20, 90);
+  doc.text(`TELEFONO: ${data.telefono || "-"}`, 20, 100);
+  doc.text(`DOMICILIO: ${data.direccion || "-"}`, 20, 110);
+
+  doc.setFontSize(14);
+  doc.text("DATOS DE ENTREGA", 20, 130);
+  doc.roundedRect(15, 122, 180, 28, 3, 3);
+
+  doc.setFontSize(11);
+  doc.text(`FORMA: ${data.formaEntrega || "Envio"}`, 20, 136);
+  doc.text(`FECHA PROGRAMADA: ${formatDate(data.fechaEntrega || "")}`, 90, 136);
+  doc.text(`PEDIDO: ${data.numero}`, 20, 146);
+
+  autoTable(doc, {
+    startY: 162,
+    head: [["CANTIDAD", "UNIDAD", "PRODUCTO", "VARIANTE", "COLOR"]],
+    body: data.items
+      .filter((item) => item.producto !== "DESCUENTO")
+      .map((item) => [
+        item.cantidad || "-",
+        item.unidad || "-",
+        item.producto || "-",
+        item.modelo || "-",
+        item.color || "-",
+      ]),
+    styles: {
+      fontSize: 9,
+    },
+    headStyles: {
+      fillColor: [7, 17, 31],
+    },
+  });
+
+  const finalY = Math.max((doc as any).lastAutoTable.finalY + 18, 220);
+
+  doc.setFontSize(11);
+  doc.text("OBSERVACIONES:", 20, finalY);
+  doc.roundedRect(15, finalY + 4, 180, 22, 3, 3);
+  doc.text(data.observaciones || "Sin observaciones", 20, finalY + 16);
+
+  const firmaY = finalY + 55;
+  doc.line(25, firmaY, 90, firmaY);
+  doc.line(120, firmaY, 185, firmaY);
+  doc.text("FIRMA CLIENTE", 38, firmaY + 8);
+  doc.text("ACLARACION / DNI", 134, firmaY + 8);
+
+  doc.setFontSize(9);
+  doc.text(
+    "Documento de respaldo de entrega generado por PremOS.",
+    15,
+    286
+  );
+
+  doc.save(`${data.numero}-remito-envio.pdf`);
 }
 
 export function generarPDFReporte(data: ReportePDF) {

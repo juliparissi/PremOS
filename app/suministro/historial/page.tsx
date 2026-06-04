@@ -10,6 +10,7 @@ export default function HistorialComprasPage() {
 
   const [compras, setCompras] = useState<any[]>([]);
   const [suministros, setSuministros] = useState<any[]>([]);
+  const [proveedores, setProveedores] = useState<any[]>([]);
   const [pagina, setPagina] = useState(1);
   const [totalCompras, setTotalCompras] = useState(0);
   const [modalEditar, setModalEditar] = useState(false);
@@ -40,6 +41,20 @@ export default function HistorialComprasPage() {
     }
 
     setSuministros(data || []);
+  }
+
+  async function cargarProveedores() {
+    const { data, error } = await supabase
+      .from("proveedores")
+      .select("id,nombre,materia_prima")
+      .order("nombre", { ascending: true });
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
+    setProveedores(data || []);
   }
 
   async function cargarCompras() {
@@ -204,6 +219,7 @@ export default function HistorialComprasPage() {
 
     cargarCompras();
     cargarSuministros();
+    cargarProveedores();
 
   }, [pagina]);
 
@@ -353,7 +369,7 @@ export default function HistorialComprasPage() {
 
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
 
-          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-3xl">
+          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
 
             <div className="p-6 border-b border-white/5">
 
@@ -374,7 +390,7 @@ export default function HistorialComprasPage() {
 
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 overflow-y-auto sidebar-scroll">
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -438,13 +454,31 @@ export default function HistorialComprasPage() {
                     Proveedor
                   </label>
 
-                  <input
+                  <select
                     value={proveedorCompra}
                     onChange={(event) =>
                       setProveedorCompra(event.target.value)
                     }
                     className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
-                  />
+                  >
+                    <option value="">Seleccionar proveedor</option>
+                    {proveedorCompra &&
+                      !proveedores.some(
+                        (proveedor) => proveedor.nombre === proveedorCompra
+                      ) && (
+                        <option value={proveedorCompra}>
+                          {proveedorCompra}
+                        </option>
+                      )}
+                    {proveedores.map((proveedor) => (
+                      <option key={proveedor.id} value={proveedor.nombre}>
+                        {proveedor.nombre}
+                        {proveedor.materia_prima
+                          ? ` - ${proveedor.materia_prima}`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
 
                 </div>
 

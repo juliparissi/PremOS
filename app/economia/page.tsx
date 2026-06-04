@@ -277,7 +277,7 @@ async function cargarHistorialAbonos(
 </>
 
           <Link
-            href="/economia/proveedores"
+            href="/proveedores"
             className="bg-white/5 hover:bg-white/10 transition px-4 py-3 rounded-2xl border border-white/5 text-sm md:text-base text-center"
           >
             Alta proveedor
@@ -615,7 +615,7 @@ async function cargarHistorialAbonos(
                   </span>
 
                   <Link
-                    href="/economia/proveedores"
+                    href="/proveedores"
                     className="text-emerald-400 hover:text-emerald-300 whitespace-nowrap"
                   >
                     Alta proveedor

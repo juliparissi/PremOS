@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import BackButton from "@/components/BackButton";
 import { supabase } from "../../../lib/supabase";
-import { generarPDFPresupuesto } from "../../../utils/generarPDF";
+import {
+  generarPDFPresupuesto,
+  generarPDFRemitoEnvio,
+} from "../../../utils/generarPDF";
 
 
 export default function HistorialPedidosPage() {
@@ -488,6 +491,31 @@ const pedidosPaginados =
 >
   Descargar nota venta
 </button>
+
+{pedidoSeleccionado?.forma_entrega === "Envio" && (
+  <button
+    onClick={() => {
+      const cliente = clientes.find(
+        (c) => c.id === pedidoSeleccionado.cliente_id
+      );
+
+      generarPDFRemitoEnvio({
+        numero: pedidoSeleccionado.numero,
+        fecha: new Date().toLocaleDateString("es-AR"),
+        fechaEntrega: pedidoSeleccionado.fecha_entrega,
+        cliente: cliente?.nombre || "Cliente",
+        telefono: cliente?.telefono || "",
+        direccion: cliente?.direccion || "",
+        formaEntrega: pedidoSeleccionado.forma_entrega || "Envio",
+        observaciones: pedidoSeleccionado.observaciones || "",
+        items: pedidoItems,
+      });
+    }}
+    className="bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-white transition px-4 py-2 rounded-xl border border-cyan-500/20 text-sm"
+  >
+    Descargar remito envio
+  </button>
+)}
 
               </div>
 

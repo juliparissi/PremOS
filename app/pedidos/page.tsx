@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { generarPDFPresupuesto } from "../../utils/generarPDF";
+import {
+  generarPDFPresupuesto,
+  generarPDFRemitoEnvio,
+} from "../../utils/generarPDF";
 import BackButton from "@/components/BackButton";
 
 type Pedido = {
@@ -18,6 +21,7 @@ type Pedido = {
   saldo_restante: number;
   observaciones?: string;
   fecha_inicio_produccion?: string;
+  forma_entrega?: string;
   con_factura?: boolean;
   numero_factura?: string;
 };
@@ -60,6 +64,8 @@ export default function PedidosPage() {
   const [modalEntregaFinal, setModalEntregaFinal] = useState(false);
   const [tipoEntrega, setTipoEntrega] = useState("");
   const [modalEntrega, setModalEntrega] = useState(false);
+  const [modalFormaEntrega, setModalFormaEntrega] = useState(false);
+  const [formaEntrega, setFormaEntrega] = useState("Retiro de fabrica");
   const [fechaEntrega, setFechaEntrega] = useState("");
   const [modalHistorialPagos, setModalHistorialPagos] = useState(false);
   const [modalEstado, setModalEstado] = useState(false);
@@ -353,6 +359,7 @@ if (saldoRestante > 0) {
       saldo_restante: 0,
 
       estado_pago: "Pagado",
+      forma_entrega: tipoEntrega,
     })
     .eq("id", pedidoSeleccionado.id);
 
@@ -363,9 +370,10 @@ if (saldoRestante > 0) {
       pedidoSeleccionado.saldo_total,
     saldo_restante: 0,
     estado_pago: "Pagado",
+    forma_entrega: tipoEntrega,
   });
 
-  setModalEntrega(false);
+  setModalEntregaFinal(false);
 
   cargarPedidos();
 
@@ -438,6 +446,59 @@ async function quitarFactura() {
 
   setModalFactura(false);
   cargarPedidos();
+}
+
+function abrirFormaEntrega() {
+  setFormaEntrega(
+    pedidoSeleccionado?.forma_entrega || "Retiro de fabrica"
+  );
+  setModalFormaEntrega(true);
+}
+
+async function guardarFormaEntrega() {
+  if (!pedidoSeleccionado) return;
+
+  const { error } = await supabase
+    .from("pedidos")
+    .update({
+      forma_entrega: formaEntrega,
+    })
+    .eq("id", pedidoSeleccionado.id);
+
+  if (error) {
+    alert(
+      "No se pudo guardar la forma de entrega. Revisá que exista la columna forma_entrega en Supabase."
+    );
+    return;
+  }
+
+  setPedidoSeleccionado({
+    ...pedidoSeleccionado,
+    forma_entrega: formaEntrega,
+  });
+
+  setModalFormaEntrega(false);
+  cargarPedidos();
+}
+
+function descargarRemitoEnvio() {
+  if (!pedidoSeleccionado) return;
+
+  const cliente = clientes.find(
+    (item) => item.id === pedidoSeleccionado.cliente_id
+  );
+
+  generarPDFRemitoEnvio({
+    numero: pedidoSeleccionado.numero,
+    fecha: new Date().toLocaleDateString("es-AR"),
+    fechaEntrega: pedidoSeleccionado.fecha_entrega,
+    cliente: cliente?.nombre || "Cliente",
+    telefono: cliente?.telefono || "",
+    direccion: cliente?.direccion || "",
+    formaEntrega: pedidoSeleccionado.forma_entrega || "Envio",
+    observaciones: pedidoSeleccionado.observaciones || "",
+    items: pedidoItems,
+  });
 }
 
 async function eliminarPedidoCompleto() {
@@ -1155,7 +1216,7 @@ const pedidosPaginados =
             </div>
 
 {/* Fecha entrega */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 
 <div className="bg-[#07111f] border border-white/5 rounded-3xl p-6">
 
@@ -1171,6 +1232,24 @@ const pedidosPaginados =
       .join("/")}
 
   </h3>
+
+</div>
+
+<div className="bg-[#07111f] border border-white/5 rounded-3xl p-6">
+
+  <p className="text-zinc-500 text-sm">
+    Forma de entrega
+  </p>
+
+  <h3 className="text-2xl font-bold mt-3 text-cyan-300">
+    {pedidoSeleccionado?.forma_entrega || "Retiro de fabrica"}
+  </h3>
+
+  <p className="text-zinc-500 text-sm mt-2">
+    {pedidoSeleccionado?.forma_entrega === "Envio"
+      ? "Habilita remito de envio"
+      : "Entrega sin remito de envio"}
+  </p>
 
 </div>
 
@@ -1242,6 +1321,22 @@ const pedidosPaginados =
 </button>
 
   <button
+    onClick={abrirFormaEntrega}
+    className="bg-white/5 hover:bg-white/10 transition px-4 py-2 rounded-xl border border-white/5 text-sm"
+  >
+    Forma de entrega
+  </button>
+
+  {pedidoSeleccionado?.forma_entrega === "Envio" && (
+    <button
+      onClick={descargarRemitoEnvio}
+      className="bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-white transition px-4 py-2 rounded-xl border border-cyan-500/20 text-sm"
+    >
+      Descargar remito envio
+    </button>
+  )}
+
+  <button
   onClick={() => setModalEstado(true)}
   className="bg-white/5 hover:bg-white/10 transition px-4 py-2 rounded-xl border border-white/5 text-sm"
 >
@@ -1256,7 +1351,12 @@ const pedidosPaginados =
 </button>
 
   <button
-  onClick={() => setModalEntregaFinal(true)}
+  onClick={() => {
+    setTipoEntrega(
+      pedidoSeleccionado?.forma_entrega || "Retiro de fabrica"
+    );
+    setModalEntregaFinal(true);
+  }}
   className="bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-white transition px-4 py-2 rounded-xl border border-emerald-500/20 text-sm"
 >
   Marcar entregado
@@ -1730,6 +1830,52 @@ const pedidosPaginados =
 
 )}
 
+{modalFormaEntrega && (
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-6">
+    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-xl p-8 relative">
+      <button
+        onClick={() => setModalFormaEntrega(false)}
+        className="absolute top-6 right-6 text-zinc-400 hover:text-white transition text-3xl"
+      >
+        ×
+      </button>
+
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-white">
+          Forma de entrega
+        </h2>
+        <p className="text-zinc-500 mt-1">
+          Defini si el pedido se retira o se envia.
+        </p>
+      </div>
+
+      <select
+        value={formaEntrega}
+        onChange={(event) => setFormaEntrega(event.target.value)}
+        className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-white"
+      >
+        <option value="Retiro de fabrica">Retiro de fabrica</option>
+        <option value="Envio">Envio</option>
+      </select>
+
+      <div className="flex justify-end gap-3 mt-8">
+        <button
+          onClick={() => setModalFormaEntrega(false)}
+          className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={guardarFormaEntrega}
+          className="bg-emerald-500 hover:bg-emerald-400 transition px-5 py-3 rounded-2xl text-black font-semibold"
+        >
+          Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 {/* Modal estado */}
 {modalEstado && (
 
@@ -2009,12 +2155,12 @@ const pedidosPaginados =
             Tipo entrega
           </option>
 
-          <option>
-            Retira cliente
+          <option value="Retiro de fabrica">
+            Retiro de fabrica
           </option>
 
-          <option>
-            Enviado
+          <option value="Envio">
+            Envio
           </option>
 
         </select>

@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
   { href: "/pedidos", label: "Pedidos", module: "pedidos" },
   { href: "/produccion", label: "Producción", module: "produccion" },
   { href: "/economia", label: "Economía", module: "economia" },
+  { href: "/proveedores", label: "Proveedores", module: "proveedores" },
   { href: "/nomina", label: "Nómina", module: "nomina" },
   { href: "/suministro", label: "Suministro", module: "suministro" },
   { href: "/stock", label: "Stock", module: "stock" },
