@@ -219,7 +219,7 @@ export default function ConfiguracionPage() {
               )}
 
               <p className="text-zinc-500 text-sm mt-4">
-                Lite habilita gestion basica comercial. Full suma produccion, stock, suministros, reportes y listas de precios. Pro suma nomina y el asistente IA con hasta 300 consultas mensuales.
+                Lite habilita gestion basica comercial. Full suma produccion, stock, suministros, reportes, listas de precios y nomina. Pro suma el asistente IA con hasta 300 consultas mensuales.
               </p>
             </div>
 
