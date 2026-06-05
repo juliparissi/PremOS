@@ -16,8 +16,14 @@ type Proveedor = {
 
 type CompraProveedor = {
   proveedor?: string | null;
+  cantidad?: number | null;
   monto_total?: number | null;
   monto_abonado?: number | null;
+  created_at?: string | null;
+  suministros?: {
+    nombre?: string | null;
+    unidad?: string | null;
+  } | null;
 };
 
 const proveedorVacio = {
@@ -34,6 +40,8 @@ export default function ProveedoresPage() {
   const [compras, setCompras] = useState<CompraProveedor[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [proveedorDetalle, setProveedorDetalle] =
+    useState<Proveedor | null>(null);
   const [proveedorEditando, setProveedorEditando] =
     useState<Proveedor | null>(null);
   const [form, setForm] = useState(proveedorVacio);
@@ -58,7 +66,20 @@ export default function ProveedoresPage() {
   async function cargarCompras() {
     const { data } = await supabase
       .from("movimientos_suministro")
-      .select("proveedor,monto_total,monto_abonado");
+      .select(
+        `
+        proveedor,
+        cantidad,
+        monto_total,
+        monto_abonado,
+        created_at,
+        suministros (
+          nombre,
+          unidad
+        )
+      `
+      )
+      .order("created_at", { ascending: false });
 
     if (data) {
       setCompras(data as CompraProveedor[]);
@@ -152,9 +173,7 @@ export default function ProveedoresPage() {
   });
 
   function resumenProveedor(nombre: string) {
-    const comprasProveedor = compras.filter(
-      (compra) => (compra.proveedor || "").trim() === nombre
-    );
+    const comprasProveedor = comprasProveedorDe(nombre);
 
     const totalComprado = comprasProveedor.reduce(
       (total, compra) => total + Number(compra.monto_total || 0),
@@ -170,6 +189,12 @@ export default function ProveedoresPage() {
       totalComprado,
       saldoPendiente: Math.max(totalComprado - totalAbonado, 0),
     };
+  }
+
+  function comprasProveedorDe(nombre: string) {
+    return compras.filter(
+      (compra) => (compra.proveedor || "").trim() === nombre
+    );
   }
 
   function formatearDinero(value: number) {
@@ -217,65 +242,37 @@ export default function ProveedoresPage() {
         />
       </div>
 
-      <div className="hidden xl:block bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden">
-        <div className="grid grid-cols-9 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
+      <div className="hidden md:block bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden">
+        <div className="grid grid-cols-5 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
           <div>Proveedor</div>
           <div>Materia prima</div>
           <div>Teléfono</div>
-          <div>Mail</div>
-          <div>CUIT</div>
           <div>Compras</div>
-          <div>Total comprado</div>
-          <div>Saldo</div>
           <div className="text-right">Acciones</div>
         </div>
 
         {proveedoresFiltrados.map((proveedor) => (
           <div
             key={proveedor.id}
-            className="grid grid-cols-9 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition text-white"
+            className="grid grid-cols-5 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition text-white"
           >
             <div className="font-medium">{proveedor.nombre}</div>
             <div>{proveedor.materia_prima || "-"}</div>
             <div>{proveedor.telefono || "-"}</div>
-            <div>{proveedor.mail || "-"}</div>
-            <div>{proveedor.cuit || "-"}</div>
             <div>{resumenProveedor(proveedor.nombre).compras}</div>
-            <div>
-              {formatearDinero(
-                resumenProveedor(proveedor.nombre).totalComprado
-              )}
-            </div>
-            <div
-              className={
-                resumenProveedor(proveedor.nombre).saldoPendiente > 0
-                  ? "text-amber-300 font-semibold"
-                  : "text-emerald-300"
-              }
-            >
-              {formatearDinero(
-                resumenProveedor(proveedor.nombre).saldoPendiente
-              )}
-            </div>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => abrirEdicion(proveedor)}
+                onClick={() => setProveedorDetalle(proveedor)}
                 className="text-cyan-400 hover:text-cyan-300"
               >
-                Editar
-              </button>
-              <button
-                onClick={() => eliminarProveedor(proveedor)}
-                className="text-red-400 hover:text-red-300"
-              >
-                Eliminar
+                Ver mas
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="xl:hidden space-y-4">
+      <div className="md:hidden space-y-4">
         {proveedoresFiltrados.map((proveedor) => (
           <div
             key={proveedor.id}
@@ -292,34 +289,154 @@ export default function ProveedoresPage() {
               </div>
 
               <button
-                onClick={() => abrirEdicion(proveedor)}
+                onClick={() => setProveedorDetalle(proveedor)}
                 className="text-cyan-400"
               >
-                Editar
+                Ver mas
               </button>
             </div>
 
             <div className="grid grid-cols-1 gap-2 mt-4 text-sm text-zinc-300">
               <p>{proveedor.telefono || "Sin teléfono"}</p>
-              <p>{proveedor.mail || "Sin mail"}</p>
-              <p>{proveedor.cuit || "Sin CUIT"}</p>
               <p>Compras: {resumenProveedor(proveedor.nombre).compras}</p>
-              <p>
-                Total comprado:{" "}
-                {formatearDinero(
-                  resumenProveedor(proveedor.nombre).totalComprado
-                )}
-              </p>
-              <p>
-                Saldo pendiente:{" "}
-                {formatearDinero(
-                  resumenProveedor(proveedor.nombre).saldoPendiente
-                )}
-              </p>
             </div>
           </div>
         ))}
       </div>
+
+      {proveedorDetalle && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-4xl p-5 md:p-8 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setProveedorDetalle(null)}
+              className="absolute top-5 right-6 text-zinc-400 hover:text-white transition text-3xl"
+            >
+              ×
+            </button>
+
+            <div className="mb-6 pr-10">
+              <h2 className="text-2xl md:text-3xl font-bold text-white">
+                {proveedorDetalle.nombre}
+              </h2>
+              <p className="text-zinc-500 mt-1">
+                Ficha del proveedor
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <InfoCard label="Materia prima" value={proveedorDetalle.materia_prima || "-"} />
+              <InfoCard label="Telefono" value={proveedorDetalle.telefono || "-"} />
+              <InfoCard label="Mail" value={proveedorDetalle.mail || "-"} />
+              <InfoCard label="CUIT" value={proveedorDetalle.cuit || "-"} />
+              <InfoCard
+                label="Compras"
+                value={String(resumenProveedor(proveedorDetalle.nombre).compras)}
+              />
+              <InfoCard
+                label="Total comprado"
+                value={formatearDinero(
+                  resumenProveedor(proveedorDetalle.nombre).totalComprado
+                )}
+              />
+              <InfoCard
+                label="Saldo pendiente"
+                value={formatearDinero(
+                  resumenProveedor(proveedorDetalle.nombre).saldoPendiente
+                )}
+                accent={
+                  resumenProveedor(proveedorDetalle.nombre).saldoPendiente > 0
+                    ? "amber"
+                    : "emerald"
+                }
+              />
+            </div>
+
+            <div className="bg-[#07111f] border border-white/5 rounded-3xl p-5 mb-6">
+              <p className="text-zinc-500 text-sm mb-2">Observaciones</p>
+              <p className="text-white">
+                {proveedorDetalle.observaciones || "Sin observaciones"}
+              </p>
+            </div>
+
+            <div className="bg-[#07111f] border border-white/5 rounded-3xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-white/5">
+                <h3 className="text-lg font-bold text-white">
+                  Historial de compras
+                </h3>
+              </div>
+
+              {comprasProveedorDe(proveedorDetalle.nombre).length === 0 ? (
+                <p className="p-5 text-zinc-500">
+                  No hay compras registradas para este proveedor.
+                </p>
+              ) : (
+                <div className="divide-y divide-white/5">
+                  {comprasProveedorDe(proveedorDetalle.nombre)
+                    .slice(0, 10)
+                    .map((compra, index) => (
+                      <div
+                        key={`${compra.created_at || "compra"}-${index}`}
+                        className="grid grid-cols-1 md:grid-cols-5 gap-3 px-5 py-4 text-sm text-white"
+                      >
+                        <div>
+                          {compra.created_at
+                            ? new Date(compra.created_at).toLocaleDateString(
+                                "es-AR"
+                              )
+                            : "-"}
+                        </div>
+                        <div>
+                          {compra.suministros?.nombre || "Compra"}
+                        </div>
+                        <div>
+                          {Number(compra.cantidad || 0).toLocaleString(
+                            "es-AR",
+                            { maximumFractionDigits: 3 }
+                          )}{" "}
+                          {compra.suministros?.unidad || ""}
+                        </div>
+                        <div>{formatearDinero(Number(compra.monto_total || 0))}</div>
+                        <div className="text-amber-300">
+                          Saldo{" "}
+                          {formatearDinero(
+                            Math.max(
+                              Number(compra.monto_total || 0) -
+                                Number(compra.monto_abonado || 0),
+                              0
+                            )
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={() => {
+                  const proveedor = proveedorDetalle;
+                  setProveedorDetalle(null);
+                  abrirEdicion(proveedor);
+                }}
+                className="bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-white transition px-5 py-3 rounded-2xl border border-cyan-500/20"
+              >
+                Editar
+              </button>
+              <button
+                onClick={() => {
+                  const proveedor = proveedorDetalle;
+                  setProveedorDetalle(null);
+                  eliminarProveedor(proveedor);
+                }}
+                className="bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white transition px-5 py-3 rounded-2xl border border-red-500/20"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalAbierto && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -406,6 +523,30 @@ export default function ProveedoresPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function InfoCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: "amber" | "emerald";
+}) {
+  const color =
+    accent === "amber"
+      ? "text-amber-300"
+      : accent === "emerald"
+      ? "text-emerald-300"
+      : "text-white";
+
+  return (
+    <div className="bg-[#07111f] border border-white/5 rounded-2xl p-4">
+      <p className="text-zinc-500 text-sm">{label}</p>
+      <p className={`text-lg font-bold mt-2 ${color}`}>{value}</p>
     </div>
   );
 }

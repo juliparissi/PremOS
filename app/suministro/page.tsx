@@ -3,11 +3,8 @@
 import BackButton from "@/components/BackButton";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { useRouter } from "next/navigation";
 
 export default function SuministroPage() {
-
-const router = useRouter();
 
 const [materiales, setMateriales] = useState<any[]>([]);
 
@@ -456,15 +453,6 @@ async function guardarCompra() {
 </button>
 
 <button
-  onClick={() =>
-    router.push("/suministro/historial")
-  }
-  className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5 text-white"
->
-  Historial compras
-</button>
-
-<button
   onClick={abrirNuevaCompra}
   className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl text-black font-semibold"
 >
@@ -702,155 +690,6 @@ async function guardarCompra() {
           </div>
 
         </div>
-
-        {/* Movimientos */}
-        <div className="bg-[#0b1727] border border-white/5 rounded-3xl overflow-hidden mt-8">
-
-  <div className="px-6 py-5 border-b border-white/5">
-
-    <h2 className="text-2xl font-semibold text-white">
-      Últimas compras
-    </h2>
-
-  </div>
-
-  <div className="hidden md:block">
-
-    <div className="grid grid-cols-6 px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
-
-      <div>Fecha</div>
-      <div>Material</div>
-      <div>Cantidad</div>
-      <div>Proveedor</div>
-      <div>Total</div>
-      <div className="text-right">Acciones</div>
-
-    </div>
-
-    {compras.map((item) => (
-
-      <div
-        key={item.id}
-        className="grid grid-cols-6 px-6 py-5 border-b border-white/5 hover:bg-white/5 transition"
-      >
-
-        <div className="text-white">
-
-          {new Date(
-            item.created_at
-          ).toLocaleDateString("es-AR")}
-
-        </div>
-
-        <div className="text-white">
-
-          {item.suministros?.nombre}
-
-        </div>
-
-        <div className="text-white">
-
-          {item.cantidad}
-
-        </div>
-
-        <div className="text-white">
-
-          {item.proveedor || "-"}
-
-        </div>
-
-        <div className="text-white">
-
-          $
-          {Number(
-            item.monto_total || 0
-          ).toLocaleString("es-AR")}
-
-        </div>
-
-        <div className="text-right">
-
-          <button
-            onClick={() => abrirEditarCompra(item)}
-            className="text-cyan-400 hover:text-cyan-300 transition"
-          >
-            Editar
-          </button>
-
-        </div>
-
-      </div>
-
-    ))}
-
-  </div>
-
-</div>
-
-          {/* Mobile */}
-          <div className="md:hidden space-y-4 p-4">
-
-            {compras.map((item) => (
-
-              <div
-                key={item.id}
-                className="bg-[#07111f] border border-white/5 rounded-3xl p-5"
-              >
-
-                <div className="flex items-center justify-between mb-3">
-
-                  <span className="text-zinc-500 text-sm">
-                    {new Date(
-                      item.created_at
-                    ).toLocaleDateString("es-AR")}
-                  </span>
-
-                  <div>
-
-                    <span className="text-emerald-400 text-sm">
-                      Compra
-                    </span>
-
-                  </div>
-
-                </div>
-
-                <h3 className="text-lg text-white mb-4">
-                  {item.suministros?.nombre}
-                </h3>
-
-                <div className="space-y-2 text-sm text-white">
-
-                  <div className="flex justify-between">
-                    <span>Cantidad</span>
-                    <span>{formatearCantidad(item.cantidad)}</span>
-                  </div>
-
-                  <div className="flex justify-between gap-4">
-                    <span>Detalle</span>
-                    <span className="text-right">
-                      {item.proveedor || item.observacion || "-"}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => abrirEditarCompra(item)}
-                    className="w-full mt-4 bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-black transition px-4 py-3 rounded-2xl border border-cyan-500/20 font-semibold"
-                  >
-                    Editar compra
-                  </button>
-
-                </div>
-
-              </div>
-
-            ))}
-
-          </div>
-
-        </div>
-
 
       {/* Modal nuevo suministro */}
 
@@ -1234,6 +1073,8 @@ async function guardarCompra() {
   </div>
 
 )}
+
+      </div>
 
     </>
 

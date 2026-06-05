@@ -277,13 +277,6 @@ async function cargarHistorialAbonos(
 </>
 
           <Link
-            href="/proveedores"
-            className="bg-white/5 hover:bg-white/10 transition px-4 py-3 rounded-2xl border border-white/5 text-sm md:text-base text-center"
-          >
-            Alta proveedor
-          </Link>
-
-          <Link
             href="/economia/historial"
             className="bg-white/5 hover:bg-white/10 transition px-4 py-3 rounded-2xl border border-white/5 text-sm md:text-base text-center"
           >
@@ -608,18 +601,11 @@ async function cargarHistorialAbonos(
                   ))}
                 </select>
 
-                <div className="flex justify-between gap-3 mt-2 text-xs">
+                <div className="mt-2 text-xs">
                   <span className="text-zinc-500">
                     Para sueldos u otros egresos generales podés crear una
-                    categoria como proveedor.
+                    categoria desde el modulo Proveedores.
                   </span>
-
-                  <Link
-                    href="/proveedores"
-                    className="text-emerald-400 hover:text-emerald-300 whitespace-nowrap"
-                  >
-                    Alta proveedor
-                  </Link>
                 </div>
 
               </div>
