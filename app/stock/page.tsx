@@ -10,6 +10,7 @@ export default function StockPage() {
 
   const [productoSeleccionado, setProductoSeleccionado] = useState<any>(null);
 
+  const [stockActual, setStockActual] = useState("");
   const [stockMinimo, setStockMinimo] = useState("");
   const [stockIdeal, setStockIdeal] = useState("");
   const [stockMaximo, setStockMaximo] = useState("");
@@ -43,7 +44,7 @@ export default function StockPage() {
         .from("stock")
         .insert({
           producto: nombreProducto,
-          stock_actual: 0,
+          stock_actual: Number(item.cantidad || 0),
           stock_minimo: 0,
           stock_ideal: 0,
           stock_maximo: 0,
@@ -118,12 +119,28 @@ async function guardarConfiguracionStock() {
   await supabase
     .from("stock")
     .update({
+      stock_actual: Number(stockActual || 0),
       stock_minimo: Number(stockMinimo),
       stock_ideal: Number(stockIdeal),
       stock_maximo: Number(stockMaximo),
       updated_at: new Date(),
     })
     .eq("id", productoSeleccionado.id);
+
+  const [producto, modelo, color] = String(productoSeleccionado.producto || "")
+    .split(" - ")
+    .map((item) => item.trim());
+
+  if (producto && modelo && color) {
+    await supabase
+      .from("productos")
+      .update({
+        cantidad: Number(stockActual || 0),
+      })
+      .eq("producto", producto)
+      .eq("modelo", modelo)
+      .eq("color", color);
+  }
 
   await cargarStock();
 
@@ -140,6 +157,10 @@ function seleccionarProducto(id: string) {
   if (!producto) return;
 
   setProductoSeleccionado(producto);
+
+  setStockActual(
+    producto.actual?.toString() || ""
+  );
 
   setStockMinimo(
     producto.minimo?.toString() || ""
@@ -197,6 +218,7 @@ useEffect(() => {
 
     setProductoSeleccionado(null);
 
+    setStockActual("");
     setStockMinimo("");
     setStockIdeal("");
     setStockMaximo("");
@@ -480,7 +502,26 @@ useEffect(() => {
 
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Stock actual
+            </label>
+
+            <input
+              type="number"
+              value={stockActual}
+              onChange={(e) =>
+                setStockActual(
+                  e.target.value
+                )
+              }
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            />
+
+          </div>
 
           <div>
 
