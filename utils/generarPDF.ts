@@ -207,6 +207,42 @@ function formatToday() {
   });
 }
 
+function agregarLogoAjustado(
+  doc: jsPDF,
+  logo: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  maxHeight: number
+) {
+  try {
+    const propiedades = doc.getImageProperties(logo);
+    const proporcion = propiedades.width / propiedades.height;
+    let ancho = maxWidth;
+    let alto = ancho / proporcion;
+
+    if (alto > maxHeight) {
+      alto = maxHeight;
+      ancho = alto * proporcion;
+    }
+
+    doc.addImage(
+      logo,
+      propiedades.fileType || "PNG",
+      x + (maxWidth - ancho) / 2,
+      y + (maxHeight - alto) / 2,
+      ancho,
+      alto
+    );
+  } catch {
+    try {
+      doc.addImage(logo, "PNG", x, y, maxWidth, maxHeight);
+    } catch {
+      // Si el logo no esta cargado o no es compatible, el PDF sigue saliendo.
+    }
+  }
+}
+
 function agregarEncabezado(
   doc: jsPDF,
   titulo: string,
@@ -224,34 +260,45 @@ function agregarEncabezado(
     empresaConfig.telefono,
     empresaConfig.email,
   ].filter(Boolean);
+  const tieneLogo = Boolean(empresaConfig.logo);
+  const bloqueEmpresaX = 12;
+  const bloqueEmpresaY = 18;
+  const bloqueEmpresaW = 98;
+  const logoX = bloqueEmpresaX;
+  const logoY = bloqueEmpresaY + 8;
+  const logoW = 42;
+  const logoH = 26;
+  const datosX = tieneLogo ? 78 : bloqueEmpresaX + bloqueEmpresaW / 2;
+  const datosY = tieneLogo ? bloqueEmpresaY + 15 : bloqueEmpresaY + 8;
+  const datosMaxW = tieneLogo ? 60 : bloqueEmpresaW;
 
   if (empresaConfig.logo) {
-    try {
-      const logo = new Image();
-      logo.src = empresaConfig.logo;
-
-      doc.addImage(
-        logo,
-        "PNG",
-        10,
-        28,
-        35,
-        20
-      );
-    } catch {
-      // Si el logo no esta cargado o no es compatible, el PDF sigue saliendo.
-    }
+    agregarLogoAjustado(doc, empresaConfig.logo, logoX, logoY, logoW, logoH);
   }
 
   if (empresaConfig.nombre) {
-    doc.setFontSize(12);
-    doc.text(empresaConfig.nombre, 10, 24);
+    let nombreFontSize = 12;
+    doc.setFontSize(nombreFontSize);
+
+    while (
+      doc.getTextWidth(empresaConfig.nombre) > datosMaxW &&
+      nombreFontSize > 8
+    ) {
+      nombreFontSize -= 1;
+      doc.setFontSize(nombreFontSize);
+    }
+
+    doc.text(empresaConfig.nombre.toUpperCase(), datosX, datosY, {
+      align: "center",
+      maxWidth: datosMaxW,
+    });
   }
 
   doc.setFontSize(10);
   datosEmpresa.forEach((dato, index) => {
-    doc.text(dato, 70, 32 + index * 7, {
+    doc.text(dato, datosX, datosY + 9 + index * 7, {
       align: "center",
+      maxWidth: datosMaxW,
     });
   });
 
@@ -270,11 +317,14 @@ function agregarEncabezado(
     doc.setFontSize(titleFontSize);
   }
 
-  doc.text(titulo, 135, 35);
+  doc.text(titulo, 160, 35, {
+    align: "center",
+    maxWidth: titleMaxWidth,
+  });
 
   doc.setFontSize(12);
-  doc.text(`FECHA: ${fecha}`, 135, 45);
-  doc.text(`FOLIO: ${numero}`, 135, 55);
+  doc.text(`FECHA: ${fecha}`, 160, 45, { align: "center" });
+  doc.text(`FOLIO: ${numero}`, 160, 55, { align: "center" });
 }
 
 export function generarPDFPresupuesto({
