@@ -15,10 +15,13 @@ type Proveedor = {
 };
 
 type CompraProveedor = {
+  id: string;
+  suministro_id?: string | null;
   proveedor?: string | null;
   cantidad?: number | null;
   monto_total?: number | null;
   monto_abonado?: number | null;
+  observacion?: string | null;
   created_at?: string | null;
   suministros?: {
     nombre?: string | null;
@@ -38,18 +41,29 @@ const proveedorVacio = {
 export default function ProveedoresPage() {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [compras, setCompras] = useState<CompraProveedor[]>([]);
+  const [suministros, setSuministros] = useState<any[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [proveedorDetalle, setProveedorDetalle] =
     useState<Proveedor | null>(null);
   const [proveedorEditando, setProveedorEditando] =
     useState<Proveedor | null>(null);
+  const [compraEditando, setCompraEditando] =
+    useState<CompraProveedor | null>(null);
+  const [suministroCompra, setSuministroCompra] = useState("");
+  const [cantidadCompra, setCantidadCompra] = useState("");
+  const [proveedorCompra, setProveedorCompra] = useState("");
+  const [montoTotalCompra, setMontoTotalCompra] = useState("");
+  const [montoAbonadoCompra, setMontoAbonadoCompra] = useState("");
+  const [observacionCompra, setObservacionCompra] = useState("");
   const [form, setForm] = useState(proveedorVacio);
   const [guardando, setGuardando] = useState(false);
+  const [guardandoCompra, setGuardandoCompra] = useState(false);
 
   useEffect(() => {
     cargarProveedores();
     cargarCompras();
+    cargarSuministros();
   }, []);
 
   async function cargarProveedores() {
@@ -68,10 +82,13 @@ export default function ProveedoresPage() {
       .from("movimientos_suministro")
       .select(
         `
+        id,
+        suministro_id,
         proveedor,
         cantidad,
         monto_total,
         monto_abonado,
+        observacion,
         created_at,
         suministros (
           nombre,
@@ -83,6 +100,17 @@ export default function ProveedoresPage() {
 
     if (data) {
       setCompras(data as CompraProveedor[]);
+    }
+  }
+
+  async function cargarSuministros() {
+    const { data } = await supabase
+      .from("suministros")
+      .select("*")
+      .order("nombre", { ascending: true });
+
+    if (data) {
+      setSuministros(data);
     }
   }
 
@@ -160,6 +188,197 @@ export default function ProveedoresPage() {
     }
 
     cargarProveedores();
+  }
+
+  function abrirEditarCompra(compra: CompraProveedor) {
+    setCompraEditando(compra);
+    setSuministroCompra(compra.suministro_id || "");
+    setCantidadCompra(String(compra.cantidad || ""));
+    setProveedorCompra(compra.proveedor || proveedorDetalle?.nombre || "");
+    setMontoTotalCompra(String(compra.monto_total || ""));
+    setMontoAbonadoCompra(String(compra.monto_abonado || ""));
+    setObservacionCompra(compra.observacion || "");
+  }
+
+  function cerrarEditarCompra() {
+    setCompraEditando(null);
+    setSuministroCompra("");
+    setCantidadCompra("");
+    setProveedorCompra("");
+    setMontoTotalCompra("");
+    setMontoAbonadoCompra("");
+    setObservacionCompra("");
+    setGuardandoCompra(false);
+  }
+
+  async function obtenerMovimientoEconomiaCompra(compra: CompraProveedor) {
+    const concepto = `Compra de ${compra.suministros?.nombre || "Compra"}`;
+    const detalle = compra.proveedor || compra.observacion || "";
+
+    let consulta = supabase
+      .from("movimientos_economia")
+      .select("id")
+      .eq("tipo", "Gasto")
+      .eq("concepto", concepto)
+      .eq("monto_total", Number(compra.monto_total || 0))
+      .eq("monto_abonado", Number(compra.monto_abonado || 0))
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (detalle) {
+      consulta = consulta.eq("detalle", detalle);
+    }
+
+    const { data } = await consulta;
+    return data?.[0]?.id || null;
+  }
+
+  async function guardarCompraProveedor() {
+    if (
+      !compraEditando ||
+      !suministroCompra ||
+      !cantidadCompra ||
+      !montoTotalCompra
+    ) {
+      alert("Completar material, cantidad y monto total.");
+      return;
+    }
+
+    const materialNuevo = suministros.find(
+      (item) => item.id === suministroCompra
+    );
+    const materialOriginal = suministros.find(
+      (item) => item.id === compraEditando.suministro_id
+    );
+
+    if (!materialNuevo) {
+      alert("No se encontro la materia prima seleccionada.");
+      return;
+    }
+
+    setGuardandoCompra(true);
+
+    const cantidadAnterior = Number(compraEditando.cantidad || 0);
+    const cantidadNueva = Number(cantidadCompra || 0);
+    const totalNuevo = Number(montoTotalCompra || 0);
+    const abonadoNuevo = Number(montoAbonadoCompra || 0);
+    const saldoNuevo = Math.max(totalNuevo - abonadoNuevo, 0);
+    const movimientoEconomiaId = await obtenerMovimientoEconomiaCompra(
+      compraEditando
+    );
+
+    if (materialOriginal && materialOriginal.id !== suministroCompra) {
+      await supabase
+        .from("suministros")
+        .update({
+          stock_actual:
+            Number(materialOriginal.stock_actual || 0) - cantidadAnterior,
+          updated_at: new Date(),
+        })
+        .eq("id", materialOriginal.id);
+
+      await supabase
+        .from("suministros")
+        .update({
+          stock_actual: Number(materialNuevo.stock_actual || 0) + cantidadNueva,
+          updated_at: new Date(),
+        })
+        .eq("id", suministroCompra);
+    } else {
+      await supabase
+        .from("suministros")
+        .update({
+          stock_actual:
+            Number(materialNuevo.stock_actual || 0) +
+            cantidadNueva -
+            cantidadAnterior,
+          updated_at: new Date(),
+        })
+        .eq("id", suministroCompra);
+    }
+
+    const { error } = await supabase
+      .from("movimientos_suministro")
+      .update({
+        suministro_id: suministroCompra,
+        cantidad: cantidadNueva,
+        proveedor: proveedorCompra,
+        monto_total: totalNuevo,
+        monto_abonado: abonadoNuevo,
+        observacion: observacionCompra,
+      })
+      .eq("id", compraEditando.id);
+
+    if (error) {
+      setGuardandoCompra(false);
+      alert("No se pudo editar la compra.");
+      return;
+    }
+
+    if (movimientoEconomiaId) {
+      await supabase
+        .from("movimientos_economia")
+        .update({
+          concepto: `Compra de ${materialNuevo.nombre}`,
+          monto: totalNuevo,
+          detalle: proveedorCompra || observacionCompra,
+          monto_total: totalNuevo,
+          monto_abonado: abonadoNuevo,
+          saldo_pendiente: saldoNuevo,
+        })
+        .eq("id", movimientoEconomiaId);
+    }
+
+    await cargarSuministros();
+    await cargarCompras();
+    cerrarEditarCompra();
+  }
+
+  async function eliminarCompraProveedor(compra: CompraProveedor) {
+    const confirma = confirm(
+      "Eliminar esta compra? Tambien se quitara de Economia y se ajustara el stock."
+    );
+
+    if (!confirma) return;
+
+    const material = suministros.find((item) => item.id === compra.suministro_id);
+    const movimientoEconomiaId = await obtenerMovimientoEconomiaCompra(compra);
+
+    if (material) {
+      await supabase
+        .from("suministros")
+        .update({
+          stock_actual:
+            Number(material.stock_actual || 0) - Number(compra.cantidad || 0),
+          updated_at: new Date(),
+        })
+        .eq("id", material.id);
+    }
+
+    const { error } = await supabase
+      .from("movimientos_suministro")
+      .delete()
+      .eq("id", compra.id);
+
+    if (error) {
+      alert("No se pudo eliminar la compra.");
+      return;
+    }
+
+    if (movimientoEconomiaId) {
+      await supabase
+        .from("movimientos_economia_abonos")
+        .delete()
+        .eq("movimiento_id", movimientoEconomiaId);
+
+      await supabase
+        .from("movimientos_economia")
+        .delete()
+        .eq("id", movimientoEconomiaId);
+    }
+
+    await cargarSuministros();
+    await cargarCompras();
   }
 
   const proveedoresFiltrados = proveedores.filter((proveedor) => {
@@ -376,7 +595,7 @@ export default function ProveedoresPage() {
                     .map((compra, index) => (
                       <div
                         key={`${compra.created_at || "compra"}-${index}`}
-                        className="grid grid-cols-1 md:grid-cols-5 gap-3 px-5 py-4 text-sm text-white"
+                        className="grid grid-cols-1 md:grid-cols-6 gap-3 px-5 py-4 text-sm text-white"
                       >
                         <div>
                           {compra.created_at
@@ -405,6 +624,20 @@ export default function ProveedoresPage() {
                               0
                             )
                           )}
+                        </div>
+                        <div className="flex justify-start md:justify-end gap-3">
+                          <button
+                            onClick={() => abrirEditarCompra(compra)}
+                            className="text-cyan-400 hover:text-cyan-300 transition"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => eliminarCompraProveedor(compra)}
+                            className="text-red-300 hover:text-red-200 transition"
+                          >
+                            Eliminar
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -519,6 +752,159 @@ export default function ProveedoresPage() {
               >
                 {guardando ? "Guardando..." : "Guardar proveedor"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {compraEditando && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-white">
+                  Editar compra
+                </h2>
+                <p className="text-zinc-500 mt-1">
+                  El cambio tambien actualiza Economia.
+                </p>
+              </div>
+
+              <button
+                onClick={cerrarEditarCompra}
+                className="text-zinc-400 hover:text-white text-3xl"
+              >
+                X
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 overflow-y-auto sidebar-scroll">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Materia prima
+                  </label>
+                  <select
+                    value={suministroCompra}
+                    onChange={(event) => setSuministroCompra(event.target.value)}
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+                  >
+                    <option value="">Seleccionar</option>
+                    {suministros.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Cantidad
+                  </label>
+                  <input
+                    type="number"
+                    value={cantidadCompra}
+                    onChange={(event) => setCantidadCompra(event.target.value)}
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Proveedor
+                  </label>
+                  <select
+                    value={proveedorCompra}
+                    onChange={(event) => setProveedorCompra(event.target.value)}
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+                  >
+                    <option value="">Seleccionar proveedor</option>
+                    {proveedorCompra &&
+                      !proveedores.some(
+                        (proveedor) => proveedor.nombre === proveedorCompra
+                      ) && <option value={proveedorCompra}>{proveedorCompra}</option>}
+                    {proveedores.map((proveedor) => (
+                      <option key={proveedor.id} value={proveedor.nombre}>
+                        {proveedor.nombre}
+                        {proveedor.materia_prima
+                          ? ` - ${proveedor.materia_prima}`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Monto total
+                  </label>
+                  <input
+                    type="number"
+                    value={montoTotalCompra}
+                    onChange={(event) => setMontoTotalCompra(event.target.value)}
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Monto abonado
+                  </label>
+                  <input
+                    type="number"
+                    value={montoAbonadoCompra}
+                    onChange={(event) =>
+                      setMontoAbonadoCompra(event.target.value)
+                    }
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Observacion
+                  </label>
+                  <input
+                    value={observacionCompra}
+                    onChange={(event) => setObservacionCompra(event.target.value)}
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-[#07111f] border border-white/5 rounded-2xl p-4">
+                <p className="text-zinc-500 text-sm">Saldo pendiente</p>
+                <p className="text-amber-300 text-2xl font-bold mt-2">
+                  {formatearDinero(
+                    Math.max(
+                      Number(montoTotalCompra || 0) -
+                        Number(montoAbonadoCompra || 0),
+                      0
+                    )
+                  )}
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={cerrarEditarCompra}
+                  className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5 text-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={guardarCompraProveedor}
+                  disabled={guardandoCompra}
+                  className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl text-black font-semibold disabled:opacity-60"
+                >
+                  {guardandoCompra ? "Guardando..." : "Guardar cambios"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
