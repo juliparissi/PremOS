@@ -4,6 +4,8 @@ import BackButton from "@/components/BackButton";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
+const unidadesStock = ["Und", "m2", "Bidon 5L"];
+
 export default function StockPage() {
 
   const [modalConfigurar, setModalConfigurar] = useState(false);
@@ -11,6 +13,7 @@ export default function StockPage() {
   const [productoSeleccionado, setProductoSeleccionado] = useState<any>(null);
 
   const [stockActual, setStockActual] = useState("");
+  const [unidadStock, setUnidadStock] = useState("Und");
   const [stockMinimo, setStockMinimo] = useState("");
   const [stockIdeal, setStockIdeal] = useState("");
   const [stockMaximo, setStockMaximo] = useState("");
@@ -65,6 +68,17 @@ async function cargarStock() {
 
   if (!data) return;
 
+  const { data: productosDB } = await supabase
+    .from("productos")
+    .select("producto,modelo,color,unidad");
+
+  const unidadesPorProducto = new Map(
+    (productosDB || []).map((item) => [
+      `${item.producto} - ${item.modelo} - ${item.color}`,
+      item.unidad || "Und",
+    ])
+  );
+
   const productosFormateados = data.map((item) => {
 
     let estado = "Óptimo";
@@ -98,6 +112,7 @@ async function cargarStock() {
   producto: item.producto,
 
   actual: item.stock_actual,
+  unidad: unidadesPorProducto.get(item.producto) || "Und",
   minimo: item.stock_minimo,
   ideal: item.stock_ideal,
   maximo: item.stock_maximo,
@@ -136,6 +151,7 @@ async function guardarConfiguracionStock() {
       .from("productos")
       .update({
         cantidad: Number(stockActual || 0),
+        unidad: unidadStock,
       })
       .eq("producto", producto)
       .eq("modelo", modelo)
@@ -160,6 +176,10 @@ function seleccionarProducto(id: string) {
 
   setStockActual(
     producto.actual?.toString() || ""
+  );
+
+  setUnidadStock(
+    producto.unidad || "Und"
   );
 
   setStockMinimo(
@@ -219,6 +239,7 @@ useEffect(() => {
     setProductoSeleccionado(null);
 
     setStockActual("");
+    setUnidadStock("Und");
     setStockMinimo("");
     setStockIdeal("");
     setStockMaximo("");
@@ -260,7 +281,10 @@ useEffect(() => {
               </div>
 
               <div className="text-white">
-                {item.actual}
+                {Number(item.actual || 0).toLocaleString("es-AR", {
+                  maximumFractionDigits: 3,
+                })}{" "}
+                {item.unidad}
               </div>
 
               <div className="text-white">
@@ -337,7 +361,11 @@ useEffect(() => {
 
                   <p className="text-zinc-500 text-sm mt-1">
 
-                    Actual: {item.actual}
+                    Actual:{" "}
+                    {Number(item.actual || 0).toLocaleString("es-AR", {
+                      maximumFractionDigits: 3,
+                    })}{" "}
+                    {item.unidad}
 
                   </p>
 
@@ -502,7 +530,7 @@ useEffect(() => {
 
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
 
           <div>
 
@@ -520,6 +548,37 @@ useEffect(() => {
               }
               className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
             />
+
+          </div>
+
+          <div>
+
+            <label className="text-sm text-zinc-400 block mb-2">
+              Unidad
+            </label>
+
+            <select
+              value={unidadStock}
+              onChange={(e) =>
+                setUnidadStock(
+                  e.target.value
+                )
+              }
+              className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
+            >
+
+              {unidadesStock.map((unidad) => (
+
+                <option
+                  key={unidad}
+                  value={unidad}
+                >
+                  {unidad}
+                </option>
+
+              ))}
+
+            </select>
 
           </div>
 

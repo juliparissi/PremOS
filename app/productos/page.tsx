@@ -9,6 +9,8 @@ import {
 } from "../../lib/planes";
 import { supabase } from "../../lib/supabase";
 
+const unidadesProducto = ["Und", "m2", "Bidon 5L"];
+
 export default function ProductosPage() {
 
   const [productos, setProductos] = useState<any[]>([]);
@@ -276,12 +278,18 @@ export default function ProductosPage() {
                 className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
               />
 
-              <input
-                placeholder="Unidad"
+              <select
                 value={unidad}
                 onChange={(e) => setUnidad(e.target.value)}
                 className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
-              />
+              >
+                <option value="">Unidad</option>
+                {unidadesProducto.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
 
               <input
                 placeholder="Stock"
@@ -373,11 +381,21 @@ export default function ProductosPage() {
                 className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
               />
 
-              <input
+              <select
                 value={unidad}
                 onChange={(e) => setUnidad(e.target.value)}
                 className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
-              />
+              >
+                <option value="">Unidad</option>
+                {unidad && !unidadesProducto.includes(unidad) && (
+                  <option value={unidad}>{unidad}</option>
+                )}
+                {unidadesProducto.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
 
               <input
                 value={cantidad}
