@@ -1,6 +1,6 @@
 ﻿import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { getEmpresaConfig } from "../lib/empresa";
+import { getEmpresaConfig, type EmpresaConfig } from "../lib/empresa";
 
 type ReportePDF = {
   tipo?:
@@ -134,6 +134,7 @@ type ListaPreciosPDF = {
 };
 
 type RemitoEnvioPDF = {
+  empresa?: Partial<EmpresaConfig>;
   numero: string;
   fecha: string;
   fechaEntrega?: string;
@@ -210,9 +211,13 @@ function agregarEncabezado(
   doc: jsPDF,
   titulo: string,
   numero: string,
-  fecha: string
+  fecha: string,
+  empresaOverride?: Partial<EmpresaConfig>
 ) {
-  const empresaConfig = getEmpresaConfig();
+  const empresaConfig = {
+    ...getEmpresaConfig(),
+    ...(empresaOverride || {}),
+  };
   const datosEmpresa = [
     empresaConfig.direccion,
     empresaConfig.localidad,
@@ -445,7 +450,8 @@ export function generarPDFRemitoEnvio(data: RemitoEnvioPDF) {
     doc,
     "REMITO DE ENVIO",
     data.numero,
-    formatDate(data.fecha)
+    formatDate(data.fecha),
+    data.empresa
   );
 
   doc.setFontSize(14);

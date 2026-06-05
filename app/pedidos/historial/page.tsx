@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import BackButton from "@/components/BackButton";
 import { supabase } from "../../../lib/supabase";
+import { getEmpresaConfig } from "../../../lib/empresa";
 import {
   generarPDFPresupuesto,
   generarPDFRemitoEnvio,
@@ -103,6 +104,42 @@ function obtenerSeniaInicial() {
     pedidoSeleccionado.saldo_abonado ||
     0
   );
+}
+
+async function obtenerEmpresaDocumento() {
+  const empresaLocal = getEmpresaConfig();
+
+  if (
+    empresaLocal.nombre ||
+    empresaLocal.direccion ||
+    empresaLocal.localidad ||
+    empresaLocal.telefono ||
+    empresaLocal.email ||
+    empresaLocal.logo
+  ) {
+    return empresaLocal;
+  }
+
+  const { data } = await supabase
+    .from("configuracion_empresa")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) {
+    return empresaLocal;
+  }
+
+  return {
+    nombre: data.nombre || "",
+    direccion: data.direccion || "",
+    localidad: data.localidad || "",
+    telefono: data.telefono || "",
+    email: data.email || "",
+    logo: data.logo || "",
+    cuit: data.cuit || "",
+    colorPrincipal: data.color_principal || empresaLocal.colorPrincipal,
+  };
 }
 
 async function cargarPresupuestoOriginal(
@@ -494,12 +531,14 @@ const pedidosPaginados =
 
 {pedidoSeleccionado?.forma_entrega === "Envio" && (
   <button
-    onClick={() => {
+    onClick={async () => {
       const cliente = clientes.find(
         (c) => c.id === pedidoSeleccionado.cliente_id
       );
+      const empresa = await obtenerEmpresaDocumento();
 
       generarPDFRemitoEnvio({
+        empresa,
         numero: pedidoSeleccionado.numero,
         fecha: new Date().toLocaleDateString("es-AR"),
         fechaEntrega: pedidoSeleccionado.fecha_entrega,

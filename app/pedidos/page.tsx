@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { getEmpresaConfig } from "../../lib/empresa";
 import {
   generarPDFPresupuesto,
   generarPDFRemitoEnvio,
@@ -481,14 +482,52 @@ async function guardarFormaEntrega() {
   cargarPedidos();
 }
 
-function descargarRemitoEnvio() {
+async function obtenerEmpresaDocumento() {
+  const empresaLocal = getEmpresaConfig();
+
+  if (
+    empresaLocal.nombre ||
+    empresaLocal.direccion ||
+    empresaLocal.localidad ||
+    empresaLocal.telefono ||
+    empresaLocal.email ||
+    empresaLocal.logo
+  ) {
+    return empresaLocal;
+  }
+
+  const { data } = await supabase
+    .from("configuracion_empresa")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) {
+    return empresaLocal;
+  }
+
+  return {
+    nombre: data.nombre || "",
+    direccion: data.direccion || "",
+    localidad: data.localidad || "",
+    telefono: data.telefono || "",
+    email: data.email || "",
+    logo: data.logo || "",
+    cuit: data.cuit || "",
+    colorPrincipal: data.color_principal || empresaLocal.colorPrincipal,
+  };
+}
+
+async function descargarRemitoEnvio() {
   if (!pedidoSeleccionado) return;
 
   const cliente = clientes.find(
     (item) => item.id === pedidoSeleccionado.cliente_id
   );
+  const empresa = await obtenerEmpresaDocumento();
 
   generarPDFRemitoEnvio({
+    empresa,
     numero: pedidoSeleccionado.numero,
     fecha: new Date().toLocaleDateString("es-AR"),
     fechaEntrega: pedidoSeleccionado.fecha_entrega,
@@ -1029,7 +1068,7 @@ const pedidosPaginados =
 
   </div>
 
-  <div className="flex gap-3 mr-16">
+  <div className="flex flex-wrap justify-end gap-3 mr-16">
 
     {pedidoSeleccionado?.presupuesto_id && (
 
@@ -1165,6 +1204,15 @@ const pedidosPaginados =
   </button>
 
 )}
+
+    {pedidoSeleccionado?.forma_entrega === "Envio" && (
+      <button
+        onClick={descargarRemitoEnvio}
+        className="bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-white transition px-4 py-2 rounded-xl border border-cyan-500/20 text-sm"
+      >
+        Descargar remito envio
+      </button>
+    )}
 
   </div>
 
@@ -1326,15 +1374,6 @@ const pedidosPaginados =
   >
     Forma de entrega
   </button>
-
-  {pedidoSeleccionado?.forma_entrega === "Envio" && (
-    <button
-      onClick={descargarRemitoEnvio}
-      className="bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-white transition px-4 py-2 rounded-xl border border-cyan-500/20 text-sm"
-    >
-      Descargar remito envio
-    </button>
-  )}
 
   <button
   onClick={() => setModalEstado(true)}
