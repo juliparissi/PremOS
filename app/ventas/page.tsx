@@ -444,13 +444,13 @@ export default function VentasPage() {
             </p>
           </div>
 
-          <div className="hidden md:grid grid-cols-[1fr_1.3fr_1fr_1fr_1fr_auto] px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
-            <div>Pedido</div>
+          <div className="hidden md:grid grid-cols-[150px_minmax(220px,1fr)_150px_130px_160px_240px] items-center px-6 py-4 border-b border-white/5 text-zinc-500 text-sm">
+            <div className="text-center">Pedido</div>
             <div>Cliente</div>
-            <div>Entrega</div>
-            <div>Pago</div>
-            <div>Total</div>
-            <div className="text-right">Acciones</div>
+            <div className="text-center">Entrega</div>
+            <div className="text-center">Pago</div>
+            <div className="text-center">Total</div>
+            <div className="text-center">Acciones</div>
           </div>
 
           {cargando ? (
@@ -462,24 +462,24 @@ export default function VentasPage() {
               {ventasDirectas.map((venta) => (
                 <div
                   key={venta.id}
-                  className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr_1fr_1fr_1fr_auto] gap-3 md:gap-0 px-6 py-5 hover:bg-white/5 transition"
+                  className="grid grid-cols-1 md:grid-cols-[150px_minmax(220px,1fr)_150px_130px_160px_240px] items-center gap-3 md:gap-0 px-6 py-5 hover:bg-white/5 transition"
                 >
                   <Link
                     href="/pedidos"
-                    className="font-medium text-white hover:text-cyan-300 transition"
+                    className="font-medium text-white hover:text-cyan-300 transition md:text-center"
                   >
                     {venta.numero}
                   </Link>
-                  <div className="text-zinc-300">
+                  <div className="text-zinc-300 md:pr-4 truncate">
                     {clientes.find((cliente) => cliente.id === venta.cliente_id)
                       ?.nombre || "Cliente sin identificar"}
                   </div>
-                  <div className="text-zinc-400">
+                  <div className="text-zinc-400 md:text-center tabular-nums">
                     {venta.fecha_entrega
                       ? venta.fecha_entrega.split("-").reverse().join("/")
                       : "-"}
                   </div>
-                  <div>
+                  <div className="md:text-center">
                     <span
                       className={
                         venta.estado_pago === "Pagado"
@@ -492,13 +492,13 @@ export default function VentasPage() {
                       {venta.estado_pago}
                     </span>
                   </div>
-                  <div className="text-emerald-400 font-semibold">
+                  <div className="text-emerald-400 font-semibold md:text-center tabular-nums">
                     {formatMoney(venta.saldo_total)}
                   </div>
-                  <div className="flex flex-wrap justify-start md:justify-end gap-2">
+                  <div className="flex flex-wrap justify-start md:justify-center gap-2">
                     <Link
                       href="/pedidos"
-                      className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-sm transition"
+                      className="min-w-14 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-sm text-center transition"
                     >
                       Ver
                     </Link>
@@ -506,7 +506,7 @@ export default function VentasPage() {
                       type="button"
                       onClick={() => eliminarVentaDirecta(venta)}
                       disabled={eliminandoVentaId === venta.id}
-                      className="px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-300 text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="min-w-36 px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-300 text-sm text-center transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {eliminandoVentaId === venta.id
                         ? "Eliminando..."
