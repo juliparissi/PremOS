@@ -152,6 +152,33 @@ type RemitoEnvioPDF = {
   }>;
 };
 
+type FacturaInternaPDF = {
+  numeroPedido: string;
+  numeroFactura?: string;
+  tipoComprobante?: string;
+  puntoVenta?: string;
+  fecha: string;
+  cliente: string;
+  telefono?: string;
+  direccion?: string;
+  cuitFacturacion?: string;
+  condicionIva?: string;
+  formaPago?: string;
+  items: Array<{
+    producto?: string;
+    modelo?: string;
+    color?: string;
+    cantidad?: number | string;
+    unidad?: string;
+    precio?: number | string;
+    total?: number | string;
+  }>;
+  neto?: number;
+  iva?: number;
+  total: number;
+  observaciones?: string;
+};
+
 const reporteTitulos = {
   completo: "REPORTE GENERAL",
   finanzas: "REPORTE INGRESOS Y GASTOS",
@@ -484,6 +511,80 @@ doc.setFontSize(11);
   // DESCARGAR
   doc.save(`${numero}.pdf`);
 
+}
+
+export function generarPDFFacturaInterna(data: FacturaInternaPDF) {
+  const doc = new jsPDF();
+  const numeroFiscal = data.numeroFactura || "PENDIENTE ARCA";
+  const titulo = data.tipoComprobante || "FACTURA";
+
+  doc.setTextColor(215);
+  doc.setFontSize(68);
+  doc.text(data.numeroFactura ? "FACTURA" : "PENDIENTE ARCA", 32, 178, {
+    angle: 45,
+  });
+  doc.setTextColor(0);
+
+  agregarEncabezado(doc, titulo.toUpperCase(), numeroFiscal, formatDate(data.fecha));
+
+  doc.setFontSize(14);
+  doc.text("DATOS DEL CLIENTE", 20, 80);
+  doc.roundedRect(15, 72, 180, 48, 3, 3);
+
+  doc.setFontSize(10);
+  doc.text(`NOMBRE: ${data.cliente}`, 20, 91, { maxWidth: 165 });
+  doc.text(`CUIT / DNI: ${data.cuitFacturacion || "-"}`, 20, 101);
+  doc.text(`CONDICION IVA: ${data.condicionIva || "-"}`, 20, 111);
+
+  autoTable(doc, {
+    startY: 128,
+    head: [["CANTIDAD", "UNIDAD", "CONCEPTO", "P. UNITARIO", "IMPORTE"]],
+    body: data.items.map((item) => [
+      item.cantidad || "",
+      item.unidad || "",
+      [item.producto, item.modelo, item.color].filter(Boolean).join(" "),
+      formatMoney(Number(item.precio || 0)),
+      formatMoney(Number(item.total || 0)),
+    ]),
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [7, 17, 31] },
+  });
+
+  const finalY = Math.max((doc as any).lastAutoTable.finalY + 14, 175);
+
+  doc.roundedRect(15, finalY - 5, 105, 42, 3, 3);
+  doc.setFontSize(11);
+  doc.text("DATOS FISCALES", 20, finalY + 3);
+  doc.setFontSize(9);
+  doc.text(`PEDIDO: ${data.numeroPedido}`, 20, finalY + 13);
+  doc.text(`PUNTO DE VENTA: ${data.puntoVenta || "-"}`, 20, finalY + 21);
+  doc.text(`FORMA DE PAGO: ${data.formaPago || "-"}`, 20, finalY + 29);
+
+  doc.roundedRect(130, finalY - 5, 60, 42, 3, 3);
+  doc.setFontSize(10);
+  doc.text(`NETO: ${formatMoney(Number(data.neto || data.total))}`, 135, finalY + 5);
+  doc.text(`IVA: ${formatMoney(Number(data.iva || 0))}`, 135, finalY + 15);
+  doc.setFontSize(14);
+  doc.text(`TOTAL: ${formatMoney(Number(data.total || 0))}`, 135, finalY + 29);
+
+  if (data.observaciones) {
+    doc.setFontSize(9);
+    doc.text(`OBSERVACIONES: ${data.observaciones}`, 15, finalY + 50, {
+      maxWidth: 180,
+    });
+  }
+
+  if (!data.numeroFactura) {
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(
+      "Comprobante interno pendiente de emision/autorizacion ARCA. No reemplaza factura fiscal.",
+      15,
+      285
+    );
+  }
+
+  doc.save(`${data.numeroFactura || data.numeroPedido}-factura.pdf`);
 }
 
 export function generarPDFRemitoEnvio(data: RemitoEnvioPDF) {

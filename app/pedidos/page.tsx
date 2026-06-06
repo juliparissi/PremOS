@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { getEmpresaConfig } from "../../lib/empresa";
 import {
+  generarPDFFacturaInterna,
   generarPDFPresupuesto,
   generarPDFRemitoEnvio,
 } from "../../utils/generarPDF";
@@ -514,8 +515,8 @@ function abrirFactura() {
 async function guardarFactura() {
   if (!pedidoSeleccionado) return;
 
-  const numero = numeroFactura.trim();
-  const tieneComprobante = Boolean(tipoComprobante || numero);
+  const numero = pedidoSeleccionado?.numero_factura || "";
+  const tieneComprobante = Boolean(tipoComprobante);
 
   const { error } = await supabase
     .from("pedidos")
@@ -611,6 +612,35 @@ async function quitarFactura() {
 
   setModalFactura(false);
   cargarPedidos();
+}
+
+function descargarFacturaInterna() {
+  if (!pedidoSeleccionado) return;
+
+  const cliente = clientes.find(
+    (item) => item.id === pedidoSeleccionado.cliente_id
+  );
+
+  generarPDFFacturaInterna({
+    numeroPedido: pedidoSeleccionado.numero,
+    numeroFactura: pedidoSeleccionado.numero_factura || "",
+    tipoComprobante: pedidoSeleccionado.tipo_comprobante || tipoComprobante,
+    puntoVenta: pedidoSeleccionado.punto_venta || puntoVenta,
+    fecha:
+      pedidoSeleccionado.fecha_factura ||
+      new Date().toISOString().split("T")[0],
+    cliente: cliente?.nombre || "Cliente",
+    telefono: cliente?.telefono || "",
+    direccion: cliente?.direccion || "",
+    cuitFacturacion: pedidoSeleccionado.cuit_facturacion || "",
+    condicionIva: pedidoSeleccionado.condicion_iva || "",
+    formaPago: pedidoSeleccionado.forma_pago_factura || "",
+    items: pedidoItems,
+    neto: pedidoSeleccionado.importe_neto,
+    iva: pedidoSeleccionado.importe_iva,
+    total: pedidoSeleccionado.saldo_total,
+    observaciones: pedidoSeleccionado.observaciones_factura || "",
+  });
 }
 
 function abrirFormaEntrega() {
@@ -1467,6 +1497,15 @@ const pedidosPaginados =
 
 )}
 
+    {pedidoSeleccionado?.con_factura && (
+      <button
+        onClick={descargarFacturaInterna}
+        className="bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-white transition px-4 py-2 rounded-xl border border-emerald-500/20 text-sm"
+      >
+        Descargar factura
+      </button>
+    )}
+
     {pedidoSeleccionado?.forma_entrega === "Envio" && (
       <button
         onClick={descargarRemitoEnvio}
@@ -1563,7 +1602,11 @@ const pedidosPaginados =
 
 </div>
 
-<div className="bg-[#07111f] border border-white/5 rounded-3xl p-6">
+<button
+  type="button"
+  onClick={abrirFactura}
+  className="bg-[#07111f] hover:bg-[#0d1f34] text-left border border-white/5 rounded-3xl p-6 transition"
+>
 
   <div className="flex items-start justify-between gap-4">
 
@@ -1588,7 +1631,7 @@ const pedidosPaginados =
       <p className="text-zinc-500 text-sm mt-2">
         {pedidoSeleccionado?.numero_factura
           ? `N° ${pedidoSeleccionado.numero_factura}`
-          : "No hay numero cargado"}
+          : "Numero pendiente ARCA"}
       </p>
 
     </div>
@@ -1597,12 +1640,13 @@ const pedidosPaginados =
       type="checkbox"
       checked={Boolean(pedidoSeleccionado?.con_factura)}
       onChange={abrirFactura}
+      onClick={(event) => event.stopPropagation()}
       className="mt-1 h-5 w-5 accent-emerald-500"
     />
 
   </div>
 
-</div>
+</button>
 
 </div>
 
@@ -1642,13 +1686,6 @@ const pedidosPaginados =
   className="bg-white/5 hover:bg-white/10 transition px-4 py-2 rounded-xl border border-white/5 text-sm"
 >
   Cambiar estado
-</button>
-
-  <button
-  onClick={abrirFactura}
-  className="bg-white/5 hover:bg-white/10 transition px-4 py-2 rounded-xl border border-white/5 text-sm"
->
-  Factura
 </button>
 
   <button
@@ -2161,11 +2198,9 @@ const pedidosPaginados =
 
         <input
           value={numeroFactura}
-          onChange={(event) =>
-            setNumeroFactura(event.target.value)
-          }
-          placeholder="Ej: A-0001-00001234"
-          className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          readOnly
+          placeholder="Lo asigna ARCA al emitir"
+          className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none text-zinc-400 cursor-not-allowed"
         />
 
         </div>

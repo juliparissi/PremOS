@@ -469,7 +469,7 @@ export default function VentasPage() {
           estado_pago: estadoPago,
           observaciones,
           con_factura: conFactura,
-          numero_factura: conFactura ? numeroFactura : null,
+          numero_factura: null,
           tipo_comprobante: conFactura ? tipoComprobante : null,
           modalidad_comprobante: conFactura ? modalidadComprobante : null,
           punto_venta: conFactura ? puntoVenta || null : null,
@@ -959,7 +959,6 @@ export default function VentasPage() {
                         </p>
                         <p className="text-xs text-zinc-500 mt-1">
                           {puntoVenta || "PV sin cargar"}
-                          {numeroFactura ? ` / N ${numeroFactura}` : ""}
                         </p>
                       </div>
 
@@ -1080,16 +1079,13 @@ export default function VentasPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="text-sm text-zinc-400 block mb-2">
+                <div className="bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3">
+                  <p className="text-sm text-zinc-400">
                     Numero de comprobante
-                  </label>
-                  <input
-                    value={numeroFactura}
-                    onChange={(event) => setNumeroFactura(event.target.value)}
-                    placeholder="Ej: 00001234"
-                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
-                  />
+                  </p>
+                  <p className="text-white mt-2">
+                    Lo asigna ARCA al emitir
+                  </p>
                 </div>
 
                 <div>
