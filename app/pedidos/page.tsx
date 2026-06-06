@@ -25,6 +25,13 @@ type Pedido = {
   forma_entrega?: string;
   con_factura?: boolean;
   numero_factura?: string;
+  tipo_comprobante?: string;
+  modalidad_comprobante?: string;
+  punto_venta?: string;
+  cuit_facturacion?: string;
+  condicion_iva?: string;
+  fecha_factura?: string;
+  observaciones_factura?: string;
 };
 
 type Cliente = {
@@ -43,6 +50,51 @@ type PedidoItem = {
   unidad: string;
   total: number;
 };
+
+const tiposComprobanteArca = [
+  "Factura A",
+  "Factura B",
+  "Factura C",
+  "Factura M",
+  "Nota de credito A",
+  "Nota de credito B",
+  "Nota de credito C",
+  "Nota de credito M",
+  "Nota de debito A",
+  "Nota de debito B",
+  "Nota de debito C",
+  "Nota de debito M",
+  "Recibo A",
+  "Recibo B",
+  "Recibo C",
+  "Factura E",
+  "Nota de credito E",
+  "Nota de debito E",
+  "Ticket factura A",
+  "Ticket factura B",
+  "Ticket factura C",
+];
+
+const modalidadesComprobante = [
+  "Electronica ARCA",
+  "Manual / talonario",
+  "Controlador fiscal",
+  "MiPyME / FCE",
+  "Exportacion",
+];
+
+const condicionesIva = [
+  "Consumidor final",
+  "Responsable inscripto",
+  "Monotributo",
+  "Exento",
+  "No responsable",
+  "Sujeto no categorizado",
+];
+
+function marcaFiscalPedido(pedido?: Pedido | null) {
+  return pedido?.con_factura ? "C/F" : "S/F";
+}
 
 export default function PedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -72,6 +124,16 @@ export default function PedidosPage() {
   const [modalEstado, setModalEstado] = useState(false);
   const [modalFactura, setModalFactura] = useState(false);
   const [numeroFactura, setNumeroFactura] = useState("");
+  const [tipoComprobante, setTipoComprobante] = useState("Factura C");
+  const [modalidadComprobante, setModalidadComprobante] =
+    useState("Electronica ARCA");
+  const [puntoVenta, setPuntoVenta] = useState("");
+  const [cuitFacturacion, setCuitFacturacion] = useState("");
+  const [condicionIva, setCondicionIva] = useState("Consumidor final");
+  const [fechaFactura, setFechaFactura] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [observacionesFactura, setObservacionesFactura] = useState("");
   const [eliminandoPedido, setEliminandoPedido] = useState(false);
 
   const [montoPago, setMontoPago] = useState("");
@@ -173,7 +235,7 @@ export default function PedidosPage() {
 
       saldo_pendiente: 0,
 
-      detalle: metodoPago,
+      detalle: `${marcaFiscalPedido(pedidoSeleccionado)} - ${metodoPago}`,
 
       fecha: fechaPago,
     },
@@ -340,7 +402,7 @@ if (saldoRestante > 0) {
 
         saldo_pendiente: 0,
 
-        detalle: tipoEntrega,
+        detalle: `${marcaFiscalPedido(pedidoSeleccionado)} - ${tipoEntrega}`,
 
         fecha: new Date()
           .toISOString()
@@ -384,6 +446,28 @@ function abrirFactura() {
   setNumeroFactura(
     pedidoSeleccionado?.numero_factura || ""
   );
+  setTipoComprobante(
+    pedidoSeleccionado?.tipo_comprobante || "Factura C"
+  );
+  setModalidadComprobante(
+    pedidoSeleccionado?.modalidad_comprobante || "Electronica ARCA"
+  );
+  setPuntoVenta(
+    pedidoSeleccionado?.punto_venta || ""
+  );
+  setCuitFacturacion(
+    pedidoSeleccionado?.cuit_facturacion || ""
+  );
+  setCondicionIva(
+    pedidoSeleccionado?.condicion_iva || "Consumidor final"
+  );
+  setFechaFactura(
+    pedidoSeleccionado?.fecha_factura ||
+      new Date().toISOString().split("T")[0]
+  );
+  setObservacionesFactura(
+    pedidoSeleccionado?.observaciones_factura || ""
+  );
 
   setModalFactura(true);
 }
@@ -392,12 +476,20 @@ async function guardarFactura() {
   if (!pedidoSeleccionado) return;
 
   const numero = numeroFactura.trim();
+  const tieneComprobante = Boolean(tipoComprobante || numero);
 
   const { error } = await supabase
     .from("pedidos")
     .update({
-      con_factura: Boolean(numero),
+      con_factura: tieneComprobante,
       numero_factura: numero || null,
+      tipo_comprobante: tipoComprobante || null,
+      modalidad_comprobante: modalidadComprobante || null,
+      punto_venta: puntoVenta.trim() || null,
+      cuit_facturacion: cuitFacturacion.trim() || null,
+      condicion_iva: condicionIva || null,
+      fecha_factura: fechaFactura || null,
+      observaciones_factura: observacionesFactura.trim() || null,
     })
     .eq("id", pedidoSeleccionado.id);
 
@@ -411,8 +503,15 @@ async function guardarFactura() {
 
   setPedidoSeleccionado({
     ...pedidoSeleccionado,
-    con_factura: Boolean(numero),
+    con_factura: tieneComprobante,
     numero_factura: numero || "",
+    tipo_comprobante: tipoComprobante,
+    modalidad_comprobante: modalidadComprobante,
+    punto_venta: puntoVenta,
+    cuit_facturacion: cuitFacturacion,
+    condicion_iva: condicionIva,
+    fecha_factura: fechaFactura,
+    observaciones_factura: observacionesFactura,
   });
 
   setModalFactura(false);
@@ -427,6 +526,13 @@ async function quitarFactura() {
     .update({
       con_factura: false,
       numero_factura: null,
+      tipo_comprobante: null,
+      modalidad_comprobante: null,
+      punto_venta: null,
+      cuit_facturacion: null,
+      condicion_iva: null,
+      fecha_factura: null,
+      observaciones_factura: null,
     })
     .eq("id", pedidoSeleccionado.id);
 
@@ -439,10 +545,24 @@ async function quitarFactura() {
   }
 
   setNumeroFactura("");
+  setTipoComprobante("Factura C");
+  setModalidadComprobante("Electronica ARCA");
+  setPuntoVenta("");
+  setCuitFacturacion("");
+  setCondicionIva("Consumidor final");
+  setFechaFactura(new Date().toISOString().split("T")[0]);
+  setObservacionesFactura("");
   setPedidoSeleccionado({
     ...pedidoSeleccionado,
     con_factura: false,
     numero_factura: "",
+    tipo_comprobante: "",
+    modalidad_comprobante: "",
+    punto_venta: "",
+    cuit_facturacion: "",
+    condicion_iva: "",
+    fecha_factura: "",
+    observaciones_factura: "",
   });
 
   setModalFactura(false);
@@ -691,6 +811,82 @@ const pedidosPaginados =
   className="flex-1 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
 />
         </div>
+        </div>
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            CUIT / DNI cliente
+          </label>
+
+          <input
+            value={cuitFacturacion}
+            onChange={(event) =>
+              setCuitFacturacion(event.target.value)
+            }
+            placeholder="Ej: 20-12345678-9"
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          />
+
+        </div>
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            Condicion IVA
+          </label>
+
+          <select
+            value={condicionIva}
+            onChange={(event) =>
+              setCondicionIva(event.target.value)
+            }
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          >
+            {condicionesIva.map((condicion) => (
+              <option key={condicion} value={condicion}>
+                {condicion}
+              </option>
+            ))}
+          </select>
+
+        </div>
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            Fecha del comprobante
+          </label>
+
+          <input
+            type="date"
+            value={fechaFactura}
+            onChange={(event) =>
+              setFechaFactura(event.target.value)
+            }
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          />
+
+        </div>
+
+        <div className="md:col-span-2">
+
+          <label className="text-zinc-500 text-sm">
+            Observaciones fiscales
+          </label>
+
+          <textarea
+            value={observacionesFactura}
+            onChange={(event) =>
+              setObservacionesFactura(event.target.value)
+            }
+            rows={3}
+            placeholder="Datos adicionales, comprobante asociado o motivo de nota de credito/debito"
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition resize-none"
+          />
+
+        </div>
+
       </div>
 
 {/* Mobile pedidos */}
@@ -1806,7 +2002,7 @@ const pedidosPaginados =
 
   <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6">
 
-    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-xl p-6 md:p-8 relative">
+    <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-4xl p-6 md:p-8 relative max-h-[90vh] overflow-y-auto">
 
       <button
         onClick={() => setModalFactura(false)}
@@ -1828,7 +2024,70 @@ const pedidosPaginados =
 
       </div>
 
-      <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            Tipo de comprobante
+          </label>
+
+          <select
+            value={tipoComprobante}
+            onChange={(event) =>
+              setTipoComprobante(event.target.value)
+            }
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          >
+            {tiposComprobanteArca.map((tipo) => (
+              <option key={tipo} value={tipo}>
+                {tipo}
+              </option>
+            ))}
+          </select>
+
+        </div>
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            Modalidad
+          </label>
+
+          <select
+            value={modalidadComprobante}
+            onChange={(event) =>
+              setModalidadComprobante(event.target.value)
+            }
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          >
+            {modalidadesComprobante.map((modalidad) => (
+              <option key={modalidad} value={modalidad}>
+                {modalidad}
+              </option>
+            ))}
+          </select>
+
+        </div>
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            Punto de venta
+          </label>
+
+          <input
+            value={puntoVenta}
+            onChange={(event) =>
+              setPuntoVenta(event.target.value)
+            }
+            placeholder="Ej: 0001"
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          />
+
+        </div>
+
+        <div>
 
         <label className="text-zinc-500 text-sm">
           Número de factura
@@ -1842,6 +2101,82 @@ const pedidosPaginados =
           placeholder="Ej: A-0001-00001234"
           className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
         />
+
+        </div>
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            CUIT / DNI cliente
+          </label>
+
+          <input
+            value={cuitFacturacion}
+            onChange={(event) =>
+              setCuitFacturacion(event.target.value)
+            }
+            placeholder="Ej: 20-12345678-9"
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          />
+
+        </div>
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            Condicion IVA
+          </label>
+
+          <select
+            value={condicionIva}
+            onChange={(event) =>
+              setCondicionIva(event.target.value)
+            }
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          >
+            {condicionesIva.map((condicion) => (
+              <option key={condicion} value={condicion}>
+                {condicion}
+              </option>
+            ))}
+          </select>
+
+        </div>
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            Fecha del comprobante
+          </label>
+
+          <input
+            type="date"
+            value={fechaFactura}
+            onChange={(event) =>
+              setFechaFactura(event.target.value)
+            }
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          />
+
+        </div>
+
+        <div className="md:col-span-2">
+
+          <label className="text-zinc-500 text-sm">
+            Observaciones fiscales
+          </label>
+
+          <textarea
+            value={observacionesFactura}
+            onChange={(event) =>
+              setObservacionesFactura(event.target.value)
+            }
+            rows={3}
+            placeholder="Datos adicionales, comprobante asociado o motivo de nota de credito/debito"
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition resize-none"
+          />
+
+        </div>
 
       </div>
 
@@ -2224,8 +2559,6 @@ const pedidosPaginados =
 
 )}
 
-    
-    </div>
 </>
   );
 }

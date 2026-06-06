@@ -43,8 +43,56 @@ type PedidoDirecto = {
   estado_pago: string;
   con_factura?: boolean;
   numero_factura?: string | null;
+  tipo_comprobante?: string | null;
+  modalidad_comprobante?: string | null;
+  punto_venta?: string | null;
+  cuit_facturacion?: string | null;
+  condicion_iva?: string | null;
+  fecha_factura?: string | null;
+  observaciones_factura?: string | null;
   created_at?: string | null;
 };
+
+const tiposComprobanteArca = [
+  "Factura A",
+  "Factura B",
+  "Factura C",
+  "Factura M",
+  "Nota de credito A",
+  "Nota de credito B",
+  "Nota de credito C",
+  "Nota de credito M",
+  "Nota de debito A",
+  "Nota de debito B",
+  "Nota de debito C",
+  "Nota de debito M",
+  "Recibo A",
+  "Recibo B",
+  "Recibo C",
+  "Factura E",
+  "Nota de credito E",
+  "Nota de debito E",
+  "Ticket factura A",
+  "Ticket factura B",
+  "Ticket factura C",
+];
+
+const modalidadesComprobante = [
+  "Electronica ARCA",
+  "Manual / talonario",
+  "Controlador fiscal",
+  "MiPyME / FCE",
+  "Exportacion",
+];
+
+const condicionesIva = [
+  "Consumidor final",
+  "Responsable inscripto",
+  "Monotributo",
+  "Exento",
+  "No responsable",
+  "Sujeto no categorizado",
+];
 
 const money = new Intl.NumberFormat("es-AR", {
   style: "currency",
@@ -92,6 +140,14 @@ export default function VentasPage() {
   const [metodoPago, setMetodoPago] = useState("");
   const [conFactura, setConFactura] = useState(false);
   const [numeroFactura, setNumeroFactura] = useState("");
+  const [tipoComprobante, setTipoComprobante] = useState("Factura C");
+  const [modalidadComprobante, setModalidadComprobante] =
+    useState("Electronica ARCA");
+  const [puntoVenta, setPuntoVenta] = useState("");
+  const [cuitFacturacion, setCuitFacturacion] = useState("");
+  const [condicionIva, setCondicionIva] = useState("Consumidor final");
+  const [fechaFactura, setFechaFactura] = useState(today());
+  const [observacionesFactura, setObservacionesFactura] = useState("");
 
   async function cargarDatos() {
     setCargando(true);
@@ -222,6 +278,13 @@ export default function VentasPage() {
     setMetodoPago("");
     setConFactura(false);
     setNumeroFactura("");
+    setTipoComprobante("Factura C");
+    setModalidadComprobante("Electronica ARCA");
+    setPuntoVenta("");
+    setCuitFacturacion("");
+    setCondicionIva("Consumidor final");
+    setFechaFactura(today());
+    setObservacionesFactura("");
   }
 
   async function crearPedidoDirecto() {
@@ -280,6 +343,15 @@ export default function VentasPage() {
           observaciones,
           con_factura: conFactura,
           numero_factura: conFactura ? numeroFactura : null,
+          tipo_comprobante: conFactura ? tipoComprobante : null,
+          modalidad_comprobante: conFactura ? modalidadComprobante : null,
+          punto_venta: conFactura ? puntoVenta || null : null,
+          cuit_facturacion: conFactura ? cuitFacturacion || null : null,
+          condicion_iva: conFactura ? condicionIva || null : null,
+          fecha_factura: conFactura ? fechaFactura || null : null,
+          observaciones_factura: conFactura
+            ? observacionesFactura || null
+            : null,
         },
       ])
       .select()
@@ -346,7 +418,7 @@ export default function VentasPage() {
         tipo: "Ingreso",
         concepto: `Pago venta directa ${numeroPedido}`,
         monto: abonado,
-        detalle: metodoPago,
+        detalle: `${conFactura ? "C/F" : "S/F"} - ${metodoPago}`,
         fecha: today(),
         monto_total: total,
         monto_abonado: abonado,
@@ -738,12 +810,89 @@ export default function VentasPage() {
                   </label>
 
                   {conFactura && (
-                    <input
-                      value={numeroFactura}
-                      onChange={(event) => setNumeroFactura(event.target.value)}
-                      placeholder="Numero de factura"
-                      className="w-full bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <select
+                        value={tipoComprobante}
+                        onChange={(event) =>
+                          setTipoComprobante(event.target.value)
+                        }
+                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                      >
+                        {tiposComprobanteArca.map((tipo) => (
+                          <option key={tipo} value={tipo}>
+                            {tipo}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={modalidadComprobante}
+                        onChange={(event) =>
+                          setModalidadComprobante(event.target.value)
+                        }
+                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                      >
+                        {modalidadesComprobante.map((modalidad) => (
+                          <option key={modalidad} value={modalidad}>
+                            {modalidad}
+                          </option>
+                        ))}
+                      </select>
+
+                      <input
+                        value={puntoVenta}
+                        onChange={(event) => setPuntoVenta(event.target.value)}
+                        placeholder="Punto de venta"
+                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                      />
+
+                      <input
+                        value={numeroFactura}
+                        onChange={(event) =>
+                          setNumeroFactura(event.target.value)
+                        }
+                        placeholder="Numero de comprobante"
+                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                      />
+
+                      <input
+                        value={cuitFacturacion}
+                        onChange={(event) =>
+                          setCuitFacturacion(event.target.value)
+                        }
+                        placeholder="CUIT / DNI cliente"
+                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                      />
+
+                      <select
+                        value={condicionIva}
+                        onChange={(event) => setCondicionIva(event.target.value)}
+                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                      >
+                        {condicionesIva.map((condicion) => (
+                          <option key={condicion} value={condicion}>
+                            {condicion}
+                          </option>
+                        ))}
+                      </select>
+
+                      <input
+                        type="date"
+                        value={fechaFactura}
+                        onChange={(event) => setFechaFactura(event.target.value)}
+                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                      />
+
+                      <textarea
+                        value={observacionesFactura}
+                        onChange={(event) =>
+                          setObservacionesFactura(event.target.value)
+                        }
+                        placeholder="Observaciones fiscales"
+                        rows={3}
+                        className="md:col-span-2 bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none resize-none"
+                      />
+                    </div>
                   )}
                 </div>
 

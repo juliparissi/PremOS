@@ -122,6 +122,13 @@ create table if not exists public.pedidos (
   forma_entrega text not null default 'Retiro de fabrica',
   con_factura boolean not null default false,
   numero_factura text,
+  tipo_comprobante text,
+  modalidad_comprobante text,
+  punto_venta text,
+  cuit_facturacion text,
+  condicion_iva text,
+  fecha_factura date,
+  observaciones_factura text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
