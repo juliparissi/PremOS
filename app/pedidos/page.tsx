@@ -887,104 +887,6 @@ const pedidosPaginados =
         </div>
         </div>
 
-        <div>
-
-          <label className="text-zinc-500 text-sm">
-            CUIT / DNI cliente
-          </label>
-
-          <input
-            value={cuitFacturacion}
-            onChange={(event) =>
-              setCuitFacturacion(event.target.value)
-            }
-            placeholder="Ej: 20-12345678-9"
-            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
-          />
-
-        </div>
-
-        <div>
-
-          <label className="text-zinc-500 text-sm">
-            Condicion IVA
-          </label>
-
-          <select
-            value={condicionIva}
-            onChange={(event) =>
-              setCondicionIva(event.target.value)
-            }
-            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
-          >
-            {condicionesIva.map((condicion) => (
-              <option key={condicion} value={condicion}>
-                {condicion}
-              </option>
-            ))}
-          </select>
-
-        </div>
-
-        <div>
-
-          <label className="text-zinc-500 text-sm">
-            Fecha del comprobante
-          </label>
-
-          <input
-            type="date"
-            value={fechaFactura}
-            onChange={(event) =>
-              setFechaFactura(event.target.value)
-            }
-            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
-          />
-
-        </div>
-
-        <div>
-
-          <label className="text-zinc-500 text-sm">
-            Forma de pago
-          </label>
-
-          <select
-            value={formaPagoFactura}
-            onChange={(event) =>
-              setFormaPagoFactura(event.target.value)
-            }
-            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
-          >
-            {formasPagoFactura.map((forma) => (
-              <option key={forma} value={forma}>
-                {forma}
-              </option>
-            ))}
-          </select>
-
-        </div>
-
-        <div className="md:col-span-2">
-
-          <label className="text-zinc-500 text-sm">
-            Observaciones fiscales
-          </label>
-
-          <textarea
-            value={observacionesFactura}
-            onChange={(event) =>
-              setObservacionesFactura(event.target.value)
-            }
-            rows={3}
-            placeholder="Datos adicionales, comprobante asociado o motivo de nota de credito/debito"
-            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition resize-none"
-          />
-
-        </div>
-
-      </div>
-
 {/* Mobile pedidos */}
 <div className="md:hidden space-y-4 mb-8">
 
@@ -2659,6 +2561,8 @@ const pedidosPaginados =
   </div>
 
 )}
+
+</div>
 
 </>
   );
