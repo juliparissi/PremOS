@@ -51,6 +51,12 @@ type PedidoItem = {
   total: number;
 };
 
+type ConfiguracionFiscal = {
+  tipo_comprobante_default?: string | null;
+  modalidad_comprobante?: string | null;
+  punto_venta?: string | null;
+};
+
 const tiposComprobanteArca = [
   "Factura A",
   "Factura B",
@@ -98,6 +104,9 @@ function marcaFiscalPedido(pedido?: Pedido | null) {
 
 export default function PedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [configFiscal, setConfigFiscal] = useState<ConfiguracionFiscal | null>(
+    null
+  );
 
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
@@ -154,12 +163,22 @@ export default function PedidosPage() {
       .from("clientes")
       .select("*");
 
+    const { data: configFiscalData } = await supabase
+      .from("configuracion_fiscal")
+      .select("tipo_comprobante_default,modalidad_comprobante,punto_venta")
+      .limit(1)
+      .maybeSingle();
+
     if (pedidosData) {
       setPedidos(pedidosData as Pedido[]);
     }
 
     if (clientesData) {
       setClientes(clientesData as Cliente[]);
+    }
+
+    if (configFiscalData) {
+      setConfigFiscal(configFiscalData as ConfiguracionFiscal);
     }
   }
 
@@ -447,13 +466,17 @@ function abrirFactura() {
     pedidoSeleccionado?.numero_factura || ""
   );
   setTipoComprobante(
-    pedidoSeleccionado?.tipo_comprobante || "Factura C"
+    pedidoSeleccionado?.tipo_comprobante ||
+      configFiscal?.tipo_comprobante_default ||
+      "Factura C"
   );
   setModalidadComprobante(
-    pedidoSeleccionado?.modalidad_comprobante || "Electronica ARCA"
+    pedidoSeleccionado?.modalidad_comprobante ||
+      configFiscal?.modalidad_comprobante ||
+      "Electronica ARCA"
   );
   setPuntoVenta(
-    pedidoSeleccionado?.punto_venta || ""
+    pedidoSeleccionado?.punto_venta || configFiscal?.punto_venta || ""
   );
   setCuitFacturacion(
     pedidoSeleccionado?.cuit_facturacion || ""

@@ -129,6 +129,10 @@ create table if not exists public.pedidos (
   condicion_iva text,
   fecha_factura date,
   observaciones_factura text,
+  iva_tratamiento text,
+  iva_alicuota numeric,
+  importe_neto numeric,
+  importe_iva numeric,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -292,6 +296,26 @@ create table if not exists public.configuracion_empresa (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.configuracion_fiscal (
+  id uuid primary key default gen_random_uuid(),
+  razon_social text,
+  nombre_fantasia text,
+  cuit text,
+  condicion_iva text default 'Responsable Monotributo',
+  ingresos_brutos text,
+  fecha_inicio_actividades date,
+  domicilio_fiscal text,
+  domicilio_comercial text,
+  punto_venta text default '0001',
+  tipo_comprobante_default text default 'Factura C',
+  modalidad_comprobante text default 'Electronica ARCA',
+  alicuota_iva numeric default 21,
+  ambiente_arca text default 'Homologacion',
+  observaciones text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.ia_consultas (
   id uuid primary key default gen_random_uuid(),
   user_id uuid,
@@ -406,6 +430,11 @@ create trigger configuracion_empresa_set_updated_at
 before update on public.configuracion_empresa
 for each row execute function public.set_updated_at();
 
+drop trigger if exists configuracion_fiscal_set_updated_at on public.configuracion_fiscal;
+create trigger configuracion_fiscal_set_updated_at
+before update on public.configuracion_fiscal
+for each row execute function public.set_updated_at();
+
 do $$
 declare
   table_name text;
@@ -434,6 +463,7 @@ begin
     'notas_rapidas',
     'recetas_produccion',
     'configuracion_empresa',
+    'configuracion_fiscal',
     'ia_consultas'
   ]
   loop

@@ -50,7 +50,18 @@ type PedidoDirecto = {
   condicion_iva?: string | null;
   fecha_factura?: string | null;
   observaciones_factura?: string | null;
+  iva_tratamiento?: string | null;
+  iva_alicuota?: number | null;
+  importe_neto?: number | null;
+  importe_iva?: number | null;
   created_at?: string | null;
+};
+
+type ConfiguracionFiscal = {
+  tipo_comprobante_default?: string | null;
+  modalidad_comprobante?: string | null;
+  punto_venta?: string | null;
+  alicuota_iva?: number | null;
 };
 
 const tiposComprobanteArca = [
@@ -114,16 +125,87 @@ function paymentState(total: number, abonado: number) {
   return "Parcial";
 }
 
+function letraComprobante(tipo: string) {
+  const partes = tipo.trim().split(" ");
+  return partes[partes.length - 1]?.toUpperCase() || "";
+}
+
+function tratamientoIva(tipo: string) {
+  const letra = letraComprobante(tipo);
+
+  if (letra === "A" || letra === "M") {
+    return {
+      modo: "IVA discriminado",
+      descripcion:
+        "Se usa para operaciones comerciales. El IVA se muestra separado del neto.",
+      discrimina: true,
+    };
+  }
+
+  if (letra === "B") {
+    return {
+      modo: "IVA incluido",
+      descripcion:
+        "Se usa para consumidor final, exentos o no alcanzados. El IVA queda incluido en el total.",
+      discrimina: false,
+    };
+  }
+
+  if (letra === "C") {
+    return {
+      modo: "Sin discriminacion de IVA",
+      descripcion:
+        "Comprobante C. No discrimina IVA en el comprobante.",
+      discrimina: false,
+    };
+  }
+
+  return {
+    modo: "Segun comprobante",
+    descripcion:
+      "La discriminacion depende del tipo de comprobante y condicion fiscal.",
+    discrimina: false,
+  };
+}
+
+function calcularIva(totalComprobante: number, alicuota: number, tipo: string) {
+  const tratamiento = tratamientoIva(tipo);
+
+  if (!tratamiento.discrimina || alicuota <= 0) {
+    return {
+      neto: totalComprobante,
+      iva: 0,
+      total: totalComprobante,
+      tratamiento,
+    };
+  }
+
+  const divisor = 1 + alicuota / 100;
+  const neto = totalComprobante / divisor;
+  const iva = totalComprobante - neto;
+
+  return {
+    neto,
+    iva,
+    total: totalComprobante,
+    tratamiento,
+  };
+}
+
 export default function VentasPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [ventasDirectas, setVentasDirectas] = useState<PedidoDirecto[]>([]);
+  const [configFiscal, setConfigFiscal] = useState<ConfiguracionFiscal | null>(
+    null
+  );
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [eliminandoVentaId, setEliminandoVentaId] = useState<string | null>(
     null
   );
   const [modalVenta, setModalVenta] = useState(false);
+  const [modalComprobanteVenta, setModalComprobanteVenta] = useState(false);
 
   const [clienteSeleccionado, setClienteSeleccionado] = useState("");
   const [busquedaCliente, setBusquedaCliente] = useState("");
@@ -148,6 +230,7 @@ export default function VentasPage() {
   const [condicionIva, setCondicionIva] = useState("Consumidor final");
   const [fechaFactura, setFechaFactura] = useState(today());
   const [observacionesFactura, setObservacionesFactura] = useState("");
+  const [ivaAlicuota, setIvaAlicuota] = useState("21");
 
   async function cargarDatos() {
     setCargando(true);
@@ -156,6 +239,7 @@ export default function VentasPage() {
       { data: clientesData },
       { data: productosData },
       { data: ventasData },
+      { data: configFiscalData },
     ] = await Promise.all([
       supabase.from("clientes").select("id,nombre,telefono,direccion"),
       supabase.from("productos").select("*").order("producto"),
@@ -167,11 +251,21 @@ export default function VentasPage() {
         .is("presupuesto_id", null)
         .order("created_at", { ascending: false })
         .limit(12),
+      supabase
+        .from("configuracion_fiscal")
+        .select("tipo_comprobante_default,modalidad_comprobante,punto_venta,alicuota_iva")
+        .limit(1)
+        .maybeSingle(),
     ]);
 
     setClientes((clientesData || []) as Cliente[]);
     setProductos((productosData || []) as Producto[]);
     setVentasDirectas((ventasData || []) as PedidoDirecto[]);
+    if (configFiscalData) {
+      const fiscal = configFiscalData as ConfiguracionFiscal;
+      setConfigFiscal(fiscal);
+      aplicarDefaultsFiscales(fiscal);
+    }
     setCargando(false);
   }
 
@@ -212,6 +306,11 @@ export default function VentasPage() {
   const abonado = Number(montoAbonado || 0);
   const saldoRestante = Math.max(total - abonado, 0);
   const estadoPago = paymentState(total, abonado);
+  const ivaResumen = calcularIva(
+    total,
+    Number(ivaAlicuota || 0),
+    tipoComprobante
+  );
 
   function agregarProducto() {
     const producto = productos.find((item) => item.id === productoSeleccionado);
@@ -276,15 +375,29 @@ export default function VentasPage() {
     setDescuento("");
     setMontoAbonado("");
     setMetodoPago("");
-    setConFactura(false);
+    limpiarComprobante();
+  }
+
+  function aplicarDefaultsFiscales(
+    fiscal: ConfiguracionFiscal | null = configFiscal
+  ) {
     setNumeroFactura("");
-    setTipoComprobante("Factura C");
-    setModalidadComprobante("Electronica ARCA");
-    setPuntoVenta("");
+    setTipoComprobante(fiscal?.tipo_comprobante_default || "Factura C");
+    setModalidadComprobante(
+      fiscal?.modalidad_comprobante || "Electronica ARCA"
+    );
+    setPuntoVenta(fiscal?.punto_venta || "");
     setCuitFacturacion("");
     setCondicionIva("Consumidor final");
     setFechaFactura(today());
     setObservacionesFactura("");
+    setIvaAlicuota(String(fiscal?.alicuota_iva || 21));
+  }
+
+  function limpiarComprobante() {
+    setConFactura(false);
+    aplicarDefaultsFiscales();
+    setModalComprobanteVenta(false);
   }
 
   async function crearPedidoDirecto() {
@@ -352,6 +465,10 @@ export default function VentasPage() {
           observaciones_factura: conFactura
             ? observacionesFactura || null
             : null,
+          iva_tratamiento: conFactura ? ivaResumen.tratamiento.modo : null,
+          iva_alicuota: conFactura ? Number(ivaAlicuota || 0) : null,
+          importe_neto: conFactura ? ivaResumen.neto : null,
+          importe_iva: conFactura ? ivaResumen.iva : null,
         },
       ])
       .select()
@@ -803,95 +920,38 @@ export default function VentasPage() {
                     <input
                       type="checkbox"
                       checked={conFactura}
-                      onChange={(event) => setConFactura(event.target.checked)}
+                      onChange={(event) => {
+                        if (event.target.checked) {
+                          setConFactura(true);
+                          setModalComprobanteVenta(true);
+                        } else {
+                          limpiarComprobante();
+                        }
+                      }}
                       className="h-4 w-4 accent-emerald-500"
                     />
                     Venta con factura
                   </label>
 
                   {conFactura && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <select
-                        value={tipoComprobante}
-                        onChange={(event) =>
-                          setTipoComprobante(event.target.value)
-                        }
-                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                    <div className="bg-[#0b1727] border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-white">
+                          {tipoComprobante} - {ivaResumen.tratamiento.modo}
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          {puntoVenta || "PV sin cargar"}
+                          {numeroFactura ? ` / N ${numeroFactura}` : ""}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setModalComprobanteVenta(true)}
+                        className="bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-white transition px-4 py-2 rounded-xl border border-cyan-500/20 text-sm"
                       >
-                        {tiposComprobanteArca.map((tipo) => (
-                          <option key={tipo} value={tipo}>
-                            {tipo}
-                          </option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={modalidadComprobante}
-                        onChange={(event) =>
-                          setModalidadComprobante(event.target.value)
-                        }
-                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
-                      >
-                        {modalidadesComprobante.map((modalidad) => (
-                          <option key={modalidad} value={modalidad}>
-                            {modalidad}
-                          </option>
-                        ))}
-                      </select>
-
-                      <input
-                        value={puntoVenta}
-                        onChange={(event) => setPuntoVenta(event.target.value)}
-                        placeholder="Punto de venta"
-                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
-                      />
-
-                      <input
-                        value={numeroFactura}
-                        onChange={(event) =>
-                          setNumeroFactura(event.target.value)
-                        }
-                        placeholder="Numero de comprobante"
-                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
-                      />
-
-                      <input
-                        value={cuitFacturacion}
-                        onChange={(event) =>
-                          setCuitFacturacion(event.target.value)
-                        }
-                        placeholder="CUIT / DNI cliente"
-                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
-                      />
-
-                      <select
-                        value={condicionIva}
-                        onChange={(event) => setCondicionIva(event.target.value)}
-                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
-                      >
-                        {condicionesIva.map((condicion) => (
-                          <option key={condicion} value={condicion}>
-                            {condicion}
-                          </option>
-                        ))}
-                      </select>
-
-                      <input
-                        type="date"
-                        value={fechaFactura}
-                        onChange={(event) => setFechaFactura(event.target.value)}
-                        className="bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
-                      />
-
-                      <textarea
-                        value={observacionesFactura}
-                        onChange={(event) =>
-                          setObservacionesFactura(event.target.value)
-                        }
-                        placeholder="Observaciones fiscales"
-                        rows={3}
-                        className="md:col-span-2 bg-[#0b1727] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none resize-none"
-                      />
+                        Editar comprobante
+                      </button>
                     </div>
                   )}
                 </div>
@@ -930,7 +990,216 @@ export default function VentasPage() {
           </div>
         </div>
       )}
+
+      {modalComprobanteVenta && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4 overflow-y-auto">
+          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-white/5 sticky top-0 bg-[#0b1727] z-10">
+              <div>
+                <h2 className="text-2xl font-bold">Comprobante fiscal</h2>
+                <p className="text-zinc-500 text-sm mt-1">
+                  Configuracion interna preparada para emitir por ARCA mas adelante.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setModalComprobanteVenta(false)}
+                className="text-zinc-400 hover:text-white transition text-3xl leading-none"
+              >
+                X
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Tipo de comprobante
+                  </label>
+                  <select
+                    value={tipoComprobante}
+                    onChange={(event) =>
+                      setTipoComprobante(event.target.value)
+                    }
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                  >
+                    {tiposComprobanteArca.map((tipo) => (
+                      <option key={tipo} value={tipo}>
+                        {tipo}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Modalidad
+                  </label>
+                  <select
+                    value={modalidadComprobante}
+                    onChange={(event) =>
+                      setModalidadComprobante(event.target.value)
+                    }
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                  >
+                    {modalidadesComprobante.map((modalidad) => (
+                      <option key={modalidad} value={modalidad}>
+                        {modalidad}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Punto de venta
+                  </label>
+                  <input
+                    value={puntoVenta}
+                    onChange={(event) => setPuntoVenta(event.target.value)}
+                    placeholder="Ej: 0001"
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Numero de comprobante
+                  </label>
+                  <input
+                    value={numeroFactura}
+                    onChange={(event) => setNumeroFactura(event.target.value)}
+                    placeholder="Ej: 00001234"
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    CUIT / DNI cliente
+                  </label>
+                  <input
+                    value={cuitFacturacion}
+                    onChange={(event) => setCuitFacturacion(event.target.value)}
+                    placeholder="Ej: 20-12345678-9"
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Condicion IVA
+                  </label>
+                  <select
+                    value={condicionIva}
+                    onChange={(event) => setCondicionIva(event.target.value)}
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                  >
+                    {condicionesIva.map((condicion) => (
+                      <option key={condicion} value={condicion}>
+                        {condicion}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Fecha del comprobante
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaFactura}
+                    onChange={(event) => setFechaFactura(event.target.value)}
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Alicuota IVA
+                  </label>
+                  <select
+                    value={ivaAlicuota}
+                    onChange={(event) => setIvaAlicuota(event.target.value)}
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                  >
+                    <option value="21">21%</option>
+                    <option value="10.5">10,5%</option>
+                    <option value="27">27%</option>
+                    <option value="0">0%</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="bg-[#07111f] border border-white/5 rounded-3xl p-5">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-zinc-500">Tratamiento IVA</p>
+                    <h3 className="text-xl font-bold text-cyan-300 mt-1">
+                      {ivaResumen.tratamiento.modo}
+                    </h3>
+                    <p className="text-sm text-zinc-500 mt-2 max-w-2xl">
+                      {ivaResumen.tratamiento.descripcion}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-full md:min-w-[360px]">
+                    <FiscalAmount label="Neto" value={ivaResumen.neto} />
+                    <FiscalAmount label="IVA" value={ivaResumen.iva} />
+                    <FiscalAmount label="Total" value={ivaResumen.total} />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-zinc-400 block mb-2">
+                  Observaciones fiscales
+                </label>
+                <textarea
+                  value={observacionesFactura}
+                  onChange={(event) =>
+                    setObservacionesFactura(event.target.value)
+                  }
+                  placeholder="Datos adicionales, comprobante asociado o motivo de nota de credito/debito"
+                  rows={3}
+                  className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex flex-col md:flex-row justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={limpiarComprobante}
+                  className="bg-white/5 hover:bg-white/10 transition px-5 py-3 rounded-2xl border border-white/5"
+                >
+                  Sin factura
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConFactura(true);
+                    setModalComprobanteVenta(false);
+                  }}
+                  className="bg-emerald-500 hover:bg-emerald-400 transition px-5 py-3 rounded-2xl text-black font-semibold"
+                >
+                  Guardar comprobante
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
+  );
+}
+
+function FiscalAmount({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="bg-[#0b1727] border border-white/5 rounded-2xl p-4">
+      <p className="text-xs text-zinc-500">{label}</p>
+      <p className="text-lg font-bold text-white mt-1">{formatMoney(value)}</p>
+    </div>
   );
 }
 

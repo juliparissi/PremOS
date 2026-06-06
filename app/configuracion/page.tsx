@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import BackButton from "@/components/BackButton";
+import Link from "next/link";
 import {
   empresaConfig,
   getEmpresaConfig,
@@ -130,9 +131,23 @@ export default function ConfiguracionPage() {
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
           <section className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">
-            <h2 className="text-xl font-semibold mb-6">
-              Datos para documentos
-            </h2>
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  Datos para documentos
+                </h2>
+                <p className="text-zinc-500 text-sm mt-1">
+                  Informacion comercial para PDFs, notas y presupuestos.
+                </p>
+              </div>
+
+              <Link
+                href="/configuracion/datos-fiscales"
+                className="bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-white transition px-4 py-3 rounded-2xl border border-cyan-500/20 text-sm text-center"
+              >
+                Datos fiscales
+              </Link>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <ConfigInput
