@@ -48,6 +48,7 @@ type PedidoDirecto = {
   punto_venta?: string | null;
   cuit_facturacion?: string | null;
   condicion_iva?: string | null;
+  forma_pago_factura?: string | null;
   fecha_factura?: string | null;
   observaciones_factura?: string | null;
   iva_tratamiento?: string | null;
@@ -103,6 +104,17 @@ const condicionesIva = [
   "Exento",
   "No responsable",
   "Sujeto no categorizado",
+];
+
+const formasPagoFactura = [
+  "Efectivo",
+  "Transferencia bancaria",
+  "Tarjeta de debito",
+  "Tarjeta de credito",
+  "Cheque",
+  "Cuenta corriente",
+  "Mercado Pago",
+  "Otro",
 ];
 
 const money = new Intl.NumberFormat("es-AR", {
@@ -228,6 +240,7 @@ export default function VentasPage() {
   const [puntoVenta, setPuntoVenta] = useState("");
   const [cuitFacturacion, setCuitFacturacion] = useState("");
   const [condicionIva, setCondicionIva] = useState("Consumidor final");
+  const [formaPagoFactura, setFormaPagoFactura] = useState("Efectivo");
   const [fechaFactura, setFechaFactura] = useState(today());
   const [observacionesFactura, setObservacionesFactura] = useState("");
   const [ivaAlicuota, setIvaAlicuota] = useState("21");
@@ -389,6 +402,7 @@ export default function VentasPage() {
     setPuntoVenta(fiscal?.punto_venta || "");
     setCuitFacturacion("");
     setCondicionIva("Consumidor final");
+    setFormaPagoFactura(metodoPago || "Efectivo");
     setFechaFactura(today());
     setObservacionesFactura("");
     setIvaAlicuota(String(fiscal?.alicuota_iva || 21));
@@ -461,6 +475,7 @@ export default function VentasPage() {
           punto_venta: conFactura ? puntoVenta || null : null,
           cuit_facturacion: conFactura ? cuitFacturacion || null : null,
           condicion_iva: conFactura ? condicionIva || null : null,
+          forma_pago_factura: conFactura ? formaPagoFactura || null : null,
           fecha_factura: conFactura ? fechaFactura || null : null,
           observaciones_factura: conFactura
             ? observacionesFactura || null
@@ -475,7 +490,10 @@ export default function VentasPage() {
       .single();
 
     if (error || !pedido) {
-      alert("No se pudo crear la venta directa.");
+      console.error("Error al crear venta directa", error);
+      alert(
+        `No se pudo crear la venta directa.${error?.message ? `\n\nDetalle: ${error.message}` : ""}`
+      );
       setGuardando(false);
       return;
     }
@@ -1113,6 +1131,25 @@ export default function VentasPage() {
                     onChange={(event) => setFechaFactura(event.target.value)}
                     className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
                   />
+                </div>
+
+                <div>
+                  <label className="text-sm text-zinc-400 block mb-2">
+                    Forma de pago
+                  </label>
+                  <select
+                    value={formaPagoFactura}
+                    onChange={(event) =>
+                      setFormaPagoFactura(event.target.value)
+                    }
+                    className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white outline-none"
+                  >
+                    {formasPagoFactura.map((forma) => (
+                      <option key={forma} value={forma}>
+                        {forma}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

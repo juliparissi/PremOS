@@ -127,6 +127,7 @@ create table if not exists public.pedidos (
   punto_venta text,
   cuit_facturacion text,
   condicion_iva text,
+  forma_pago_factura text,
   fecha_factura date,
   observaciones_factura text,
   iva_tratamiento text,

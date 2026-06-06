@@ -30,6 +30,7 @@ type Pedido = {
   punto_venta?: string;
   cuit_facturacion?: string;
   condicion_iva?: string;
+  forma_pago_factura?: string;
   fecha_factura?: string;
   observaciones_factura?: string;
 };
@@ -98,6 +99,17 @@ const condicionesIva = [
   "Sujeto no categorizado",
 ];
 
+const formasPagoFactura = [
+  "Efectivo",
+  "Transferencia bancaria",
+  "Tarjeta de debito",
+  "Tarjeta de credito",
+  "Cheque",
+  "Cuenta corriente",
+  "Mercado Pago",
+  "Otro",
+];
+
 function marcaFiscalPedido(pedido?: Pedido | null) {
   return pedido?.con_factura ? "C/F" : "S/F";
 }
@@ -139,6 +151,7 @@ export default function PedidosPage() {
   const [puntoVenta, setPuntoVenta] = useState("");
   const [cuitFacturacion, setCuitFacturacion] = useState("");
   const [condicionIva, setCondicionIva] = useState("Consumidor final");
+  const [formaPagoFactura, setFormaPagoFactura] = useState("Efectivo");
   const [fechaFactura, setFechaFactura] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -484,6 +497,9 @@ function abrirFactura() {
   setCondicionIva(
     pedidoSeleccionado?.condicion_iva || "Consumidor final"
   );
+  setFormaPagoFactura(
+    pedidoSeleccionado?.forma_pago_factura || "Efectivo"
+  );
   setFechaFactura(
     pedidoSeleccionado?.fecha_factura ||
       new Date().toISOString().split("T")[0]
@@ -511,6 +527,7 @@ async function guardarFactura() {
       punto_venta: puntoVenta.trim() || null,
       cuit_facturacion: cuitFacturacion.trim() || null,
       condicion_iva: condicionIva || null,
+      forma_pago_factura: formaPagoFactura || null,
       fecha_factura: fechaFactura || null,
       observaciones_factura: observacionesFactura.trim() || null,
     })
@@ -533,6 +550,7 @@ async function guardarFactura() {
     punto_venta: puntoVenta,
     cuit_facturacion: cuitFacturacion,
     condicion_iva: condicionIva,
+    forma_pago_factura: formaPagoFactura,
     fecha_factura: fechaFactura,
     observaciones_factura: observacionesFactura,
   });
@@ -554,6 +572,7 @@ async function quitarFactura() {
       punto_venta: null,
       cuit_facturacion: null,
       condicion_iva: null,
+      forma_pago_factura: null,
       fecha_factura: null,
       observaciones_factura: null,
     })
@@ -573,6 +592,7 @@ async function quitarFactura() {
   setPuntoVenta("");
   setCuitFacturacion("");
   setCondicionIva("Consumidor final");
+  setFormaPagoFactura("Efectivo");
   setFechaFactura(new Date().toISOString().split("T")[0]);
   setObservacionesFactura("");
   setPedidoSeleccionado({
@@ -584,6 +604,7 @@ async function quitarFactura() {
     punto_venta: "",
     cuit_facturacion: "",
     condicion_iva: "",
+    forma_pago_factura: "",
     fecha_factura: "",
     observaciones_factura: "",
   });
@@ -889,6 +910,28 @@ const pedidosPaginados =
             }
             className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
           />
+
+        </div>
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            Forma de pago
+          </label>
+
+          <select
+            value={formaPagoFactura}
+            onChange={(event) =>
+              setFormaPagoFactura(event.target.value)
+            }
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          >
+            {formasPagoFactura.map((forma) => (
+              <option key={forma} value={forma}>
+                {forma}
+              </option>
+            ))}
+          </select>
 
         </div>
 
