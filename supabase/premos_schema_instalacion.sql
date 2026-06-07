@@ -126,6 +126,7 @@ create table if not exists public.pedidos (
   modalidad_comprobante text,
   punto_venta text,
   cuit_facturacion text,
+  razon_social_facturacion text,
   condicion_iva text,
   forma_pago_factura text,
   fecha_factura date,
@@ -134,6 +135,12 @@ create table if not exists public.pedidos (
   iva_alicuota numeric,
   importe_neto numeric,
   importe_iva numeric,
+  arca_estado text,
+  arca_resultado text,
+  arca_cae text,
+  arca_cae_vencimiento date,
+  arca_observaciones text,
+  arca_fecha_emision timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

@@ -25,6 +25,7 @@
 *.pem
 backups/
 __premos_push_tmp*/
+.arca-cache/
 
 # debug
 npm-debug.log*

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import BackButton from "@/components/BackButton";
 import { supabase } from "../../../lib/supabase";
 
@@ -55,14 +55,54 @@ const configFiscalVacia = {
 };
 
 export default function DatosFiscalesPage() {
+  const [accesoAutorizado, setAccesoAutorizado] = useState(false);
+  const [claveAcceso, setClaveAcceso] = useState("");
+  const [verificandoAcceso, setVerificandoAcceso] = useState(false);
+  const [errorAcceso, setErrorAcceso] = useState("");
   const [idConfig, setIdConfig] = useState<string | null>(null);
   const [form, setForm] = useState(configFiscalVacia);
   const [guardando, setGuardando] = useState(false);
+  const [consultandoEmisor, setConsultandoEmisor] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
-    cargarDatosFiscales();
+    const accesoGuardado =
+      typeof window !== "undefined" &&
+      window.sessionStorage.getItem("premos_fiscal_config_ok") === "1";
+
+    if (accesoGuardado) {
+      setAccesoAutorizado(true);
+      cargarDatosFiscales();
+    }
   }, []);
+
+  async function verificarAccesoFiscal(event: FormEvent) {
+    event.preventDefault();
+    setVerificandoAcceso(true);
+    setErrorAcceso("");
+
+    try {
+      const respuesta = await fetch("/api/configuracion/fiscal-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clave: claveAcceso }),
+      });
+
+      if (!respuesta.ok) {
+        setErrorAcceso("Clave incorrecta o acceso fiscal no configurado.");
+        return;
+      }
+
+      window.sessionStorage.setItem("premos_fiscal_config_ok", "1");
+      setAccesoAutorizado(true);
+      setClaveAcceso("");
+      cargarDatosFiscales();
+    } catch {
+      setErrorAcceso("No se pudo validar el acceso en este momento.");
+    } finally {
+      setVerificandoAcceso(false);
+    }
+  }
 
   async function cargarDatosFiscales() {
     const { data, error } = await supabase
@@ -147,6 +187,93 @@ export default function DatosFiscalesPage() {
 
     setIdConfig(data?.id || idConfig);
     setMensaje("Datos fiscales guardados correctamente.");
+  }
+
+  async function leerEmisorDesdeArca() {
+    setConsultandoEmisor(true);
+    setMensaje("");
+
+    try {
+      const respuesta = await fetch("/api/arca/emisor");
+      const data = await respuesta.json().catch(() => null);
+
+      if (!respuesta.ok || !data?.persona) {
+        setMensaje(
+          data?.error ||
+            "No se pudieron leer los datos fiscales desde ARCA."
+        );
+        return;
+      }
+
+      setForm((actual) => ({
+        ...actual,
+        razon_social: data.persona.razonSocial || actual.razon_social,
+        cuit: data.persona.cuit || actual.cuit,
+        domicilio_fiscal:
+          data.persona.domicilioFiscal || actual.domicilio_fiscal,
+      }));
+      setMensaje(
+        "Datos fiscales leidos desde ARCA. Revisalos y guardalos para usarlos en los comprobantes."
+      );
+    } catch {
+      setMensaje("No se pudo conectar con ARCA para leer el emisor.");
+    } finally {
+      setConsultandoEmisor(false);
+    }
+  }
+
+  if (!accesoAutorizado) {
+    return (
+      <div className="pb-24">
+        <BackButton
+          href="/configuracion"
+          label="Volver a configuracion"
+          showDesktop
+        />
+
+        <div className="max-w-xl mx-auto mt-16 bg-[#0b1727] border border-white/5 rounded-3xl p-8">
+          <p className="text-red-300 text-sm font-semibold uppercase tracking-[0.18em] mb-3">
+            Acceso restringido
+          </p>
+          <h1 className="text-3xl font-bold text-white">
+            Configuracion fiscal
+          </h1>
+          <p className="text-zinc-500 mt-3 leading-relaxed">
+            Esta seccion modifica datos fiscales, punto de venta y ambiente
+            ARCA. Ingresa la clave administrativa para continuar.
+          </p>
+
+          <form onSubmit={verificarAccesoFiscal} className="mt-8 space-y-4">
+            <div>
+              <label className="text-zinc-500 text-sm">
+                Clave administrativa
+              </label>
+              <input
+                type="password"
+                value={claveAcceso}
+                onChange={(event) => setClaveAcceso(event.target.value)}
+                className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+                autoFocus
+              />
+            </div>
+
+            {errorAcceso && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-300 rounded-2xl p-4 text-sm">
+                {errorAcceso}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={verificandoAcceso || !claveAcceso.trim()}
+              className="w-full bg-emerald-500 hover:bg-emerald-400 transition px-5 py-4 rounded-2xl font-medium text-black disabled:opacity-60"
+            >
+              {verificandoAcceso ? "Validando..." : "Ingresar"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -290,6 +417,16 @@ export default function DatosFiscalesPage() {
             className="w-full bg-emerald-500 hover:bg-emerald-400 transition px-5 py-4 rounded-2xl font-medium text-black disabled:opacity-60"
           >
             {guardando ? "Guardando..." : "Guardar datos fiscales"}
+          </button>
+
+          <button
+            onClick={leerEmisorDesdeArca}
+            disabled={consultandoEmisor}
+            className="w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/20 text-cyan-300 transition px-5 py-4 rounded-2xl font-medium disabled:opacity-60"
+          >
+            {consultandoEmisor
+              ? "Consultando ARCA..."
+              : "Leer emisor desde ARCA"}
           </button>
 
           {mensaje && (

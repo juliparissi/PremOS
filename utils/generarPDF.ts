@@ -153,6 +153,15 @@ type RemitoEnvioPDF = {
 };
 
 type FacturaInternaPDF = {
+  empresa?: Partial<EmpresaConfig>;
+  empresaFiscal?: {
+    razon_social?: string | null;
+    cuit?: string | null;
+    condicion_iva?: string | null;
+    ingresos_brutos?: string | null;
+    fecha_inicio_actividades?: string | null;
+    domicilio_fiscal?: string | null;
+  };
   numeroPedido: string;
   numeroFactura?: string;
   tipoComprobante?: string;
@@ -176,6 +185,9 @@ type FacturaInternaPDF = {
   neto?: number;
   iva?: number;
   total: number;
+  cae?: string;
+  caeVencimiento?: string;
+  arcaEstado?: string;
   observaciones?: string;
 };
 
@@ -517,27 +529,78 @@ export function generarPDFFacturaInterna(data: FacturaInternaPDF) {
   const doc = new jsPDF();
   const numeroFiscal = data.numeroFactura || "PENDIENTE ARCA";
   const titulo = data.tipoComprobante || "FACTURA";
+  const empresaConfig = {
+    ...getEmpresaConfig(),
+    ...(data.empresa || {}),
+  };
+  const fiscal = data.empresaFiscal || {};
+  const razonSocial =
+    fiscal.razon_social || empresaConfig.nombre || "PremOS";
+  const datosFiscales = [
+    fiscal.cuit ? `CUIT: ${fiscal.cuit}` : empresaConfig.cuit ? `CUIT: ${empresaConfig.cuit}` : "",
+    fiscal.condicion_iva || "",
+    fiscal.ingresos_brutos ? `IIBB: ${fiscal.ingresos_brutos}` : "",
+    fiscal.fecha_inicio_actividades
+      ? `Inicio act.: ${formatDate(fiscal.fecha_inicio_actividades)}`
+      : "",
+    fiscal.domicilio_fiscal ? `Domicilio fiscal: ${fiscal.domicilio_fiscal}` : "",
+  ].filter(Boolean);
+  const marcaAgua = data.numeroFactura ? "FACTURA" : "PENDIENTE ARCA";
 
   doc.setTextColor(215);
-  doc.setFontSize(68);
-  doc.text(data.numeroFactura ? "FACTURA" : "PENDIENTE ARCA", 32, 178, {
+  doc.setFontSize(data.numeroFactura ? 122 : 74);
+  doc.text(marcaAgua, 105, 185, {
     angle: 45,
+    align: "center",
   });
   doc.setTextColor(0);
 
-  agregarEncabezado(doc, titulo.toUpperCase(), numeroFiscal, formatDate(data.fecha));
+  if (empresaConfig.logo) {
+    agregarLogoAjustado(doc, empresaConfig.logo, 15, 18, 42, 30);
+  }
+
+  doc.setFontSize(11);
+  doc.text(razonSocial.toUpperCase(), 80, 22, {
+    align: "center",
+    maxWidth: 70,
+  });
+
+  doc.setFontSize(8);
+  datosFiscales.slice(0, 5).forEach((dato, index) => {
+    doc.text(dato, 80, 31 + index * 5, {
+      align: "center",
+      maxWidth: 78,
+    });
+  });
+
+  doc.roundedRect(125, 22, 70, 42, 3, 3);
+  doc.setFontSize(12);
+  doc.text(titulo.toUpperCase(), 160, 32, {
+    align: "center",
+    maxWidth: 58,
+  });
+  doc.text(`FECHA: ${formatDate(data.fecha)}`, 160, 44, {
+    align: "center",
+  });
+  doc.text(`NRO: ${numeroFiscal}`, 160, 56, {
+    align: "center",
+    maxWidth: 58,
+  });
 
   doc.setFontSize(14);
   doc.text("DATOS DEL CLIENTE", 20, 80);
-  doc.roundedRect(15, 72, 180, 48, 3, 3);
+  doc.roundedRect(15, 72, 180, 52, 3, 3);
 
   doc.setFontSize(10);
-  doc.text(`NOMBRE: ${data.cliente}`, 20, 91, { maxWidth: 165 });
+  doc.text(`RAZON SOCIAL: ${data.cliente}`, 20, 91, { maxWidth: 165 });
   doc.text(`CUIT / DNI: ${data.cuitFacturacion || "-"}`, 20, 101);
   doc.text(`CONDICION IVA: ${data.condicionIva || "-"}`, 20, 111);
+  doc.text(`DOMICILIO: ${data.direccion || "-"}`, 20, 119, {
+    maxWidth: 165,
+  });
 
   autoTable(doc, {
-    startY: 128,
+    startY: 132,
     head: [["CANTIDAD", "UNIDAD", "CONCEPTO", "P. UNITARIO", "IMPORTE"]],
     body: data.items.map((item) => [
       item.cantidad || "",
@@ -552,26 +615,32 @@ export function generarPDFFacturaInterna(data: FacturaInternaPDF) {
 
   const finalY = Math.max((doc as any).lastAutoTable.finalY + 14, 175);
 
-  doc.roundedRect(15, finalY - 5, 105, 42, 3, 3);
+  doc.roundedRect(15, finalY - 5, 105, 48, 3, 3);
   doc.setFontSize(11);
   doc.text("DATOS FISCALES", 20, finalY + 3);
   doc.setFontSize(9);
   doc.text(`PEDIDO: ${data.numeroPedido}`, 20, finalY + 13);
   doc.text(`PUNTO DE VENTA: ${data.puntoVenta || "-"}`, 20, finalY + 21);
   doc.text(`FORMA DE PAGO: ${data.formaPago || "-"}`, 20, finalY + 29);
+  doc.text(`CAE: ${data.cae || "-"}`, 20, finalY + 37);
 
-  doc.roundedRect(130, finalY - 5, 60, 42, 3, 3);
+  doc.roundedRect(130, finalY - 5, 60, 48, 3, 3);
   doc.setFontSize(10);
   doc.text(`NETO: ${formatMoney(Number(data.neto || data.total))}`, 135, finalY + 5);
   doc.text(`IVA: ${formatMoney(Number(data.iva || 0))}`, 135, finalY + 15);
+  doc.text(`VTO CAE: ${formatDate(data.caeVencimiento || "")}`, 135, finalY + 25);
   doc.setFontSize(14);
-  doc.text(`TOTAL: ${formatMoney(Number(data.total || 0))}`, 135, finalY + 29);
+  doc.text(`TOTAL: ${formatMoney(Number(data.total || 0))}`, 135, finalY + 38);
 
   if (data.observaciones) {
+    const observaciones = doc.splitTextToSize(data.observaciones, 178);
+    const obsY = finalY + 54;
+    const obsH = Math.max(24, observaciones.length * 5 + 14);
+
+    doc.roundedRect(15, obsY - 7, 180, obsH, 3, 3);
     doc.setFontSize(9);
-    doc.text(`OBSERVACIONES: ${data.observaciones}`, 15, finalY + 50, {
-      maxWidth: 180,
-    });
+    doc.text("OBSERVACIONES:", 20, obsY);
+    doc.text(observaciones, 20, obsY + 8);
   }
 
   if (!data.numeroFactura) {

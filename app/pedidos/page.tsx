@@ -30,10 +30,17 @@ type Pedido = {
   modalidad_comprobante?: string;
   punto_venta?: string;
   cuit_facturacion?: string;
+  razon_social_facturacion?: string;
   condicion_iva?: string;
   forma_pago_factura?: string;
   fecha_factura?: string;
   observaciones_factura?: string;
+  arca_estado?: string;
+  arca_resultado?: string;
+  arca_cae?: string;
+  arca_cae_vencimiento?: string;
+  arca_observaciones?: string;
+  arca_fecha_emision?: string;
 };
 
 type Cliente = {
@@ -50,6 +57,7 @@ type PedidoItem = {
   color: string;
   cantidad: number;
   unidad: string;
+  precio?: number;
   total: number;
 };
 
@@ -57,6 +65,12 @@ type ConfiguracionFiscal = {
   tipo_comprobante_default?: string | null;
   modalidad_comprobante?: string | null;
   punto_venta?: string | null;
+  razon_social?: string | null;
+  cuit?: string | null;
+  condicion_iva?: string | null;
+  ingresos_brutos?: string | null;
+  fecha_inicio_actividades?: string | null;
+  domicilio_fiscal?: string | null;
 };
 
 const tiposComprobanteArca = [
@@ -111,6 +125,8 @@ const formasPagoFactura = [
   "Otro",
 ];
 
+const demoMode = process.env.NEXT_PUBLIC_PREMOS_DEMO_MODE === "true";
+
 function marcaFiscalPedido(pedido?: Pedido | null) {
   return pedido?.con_factura ? "C/F" : "S/F";
 }
@@ -151,12 +167,16 @@ export default function PedidosPage() {
     useState("Electronica ARCA");
   const [puntoVenta, setPuntoVenta] = useState("");
   const [cuitFacturacion, setCuitFacturacion] = useState("");
+  const [razonSocialFacturacion, setRazonSocialFacturacion] = useState("");
   const [condicionIva, setCondicionIva] = useState("Consumidor final");
   const [formaPagoFactura, setFormaPagoFactura] = useState("Efectivo");
   const [fechaFactura, setFechaFactura] = useState(
     new Date().toISOString().split("T")[0]
   );
   const [observacionesFactura, setObservacionesFactura] = useState("");
+  const [emitiendoArca, setEmitiendoArca] = useState(false);
+  const [consultandoPadron, setConsultandoPadron] = useState(false);
+  const [mensajePadron, setMensajePadron] = useState("");
   const [eliminandoPedido, setEliminandoPedido] = useState(false);
 
   const [montoPago, setMontoPago] = useState("");
@@ -179,7 +199,7 @@ export default function PedidosPage() {
 
     const { data: configFiscalData } = await supabase
       .from("configuracion_fiscal")
-      .select("tipo_comprobante_default,modalidad_comprobante,punto_venta")
+      .select("tipo_comprobante_default,modalidad_comprobante,punto_venta,razon_social,cuit,condicion_iva,ingresos_brutos,fecha_inicio_actividades,domicilio_fiscal")
       .limit(1)
       .maybeSingle();
 
@@ -495,6 +515,12 @@ function abrirFactura() {
   setCuitFacturacion(
     pedidoSeleccionado?.cuit_facturacion || ""
   );
+  setRazonSocialFacturacion(
+    pedidoSeleccionado?.razon_social_facturacion ||
+      clientes.find((item) => item.id === pedidoSeleccionado?.cliente_id)
+        ?.nombre ||
+      ""
+  );
   setCondicionIva(
     pedidoSeleccionado?.condicion_iva || "Consumidor final"
   );
@@ -508,6 +534,7 @@ function abrirFactura() {
   setObservacionesFactura(
     pedidoSeleccionado?.observaciones_factura || ""
   );
+  setMensajePadron("");
 
   setModalFactura(true);
 }
@@ -527,6 +554,7 @@ async function guardarFactura() {
       modalidad_comprobante: modalidadComprobante || null,
       punto_venta: puntoVenta.trim() || null,
       cuit_facturacion: cuitFacturacion.trim() || null,
+      razon_social_facturacion: razonSocialFacturacion.trim() || null,
       condicion_iva: condicionIva || null,
       forma_pago_factura: formaPagoFactura || null,
       fecha_factura: fechaFactura || null,
@@ -550,6 +578,7 @@ async function guardarFactura() {
     modalidad_comprobante: modalidadComprobante,
     punto_venta: puntoVenta,
     cuit_facturacion: cuitFacturacion,
+    razon_social_facturacion: razonSocialFacturacion,
     condicion_iva: condicionIva,
     forma_pago_factura: formaPagoFactura,
     fecha_factura: fechaFactura,
@@ -572,6 +601,7 @@ async function quitarFactura() {
       modalidad_comprobante: null,
       punto_venta: null,
       cuit_facturacion: null,
+      razon_social_facturacion: null,
       condicion_iva: null,
       forma_pago_factura: null,
       fecha_factura: null,
@@ -592,6 +622,7 @@ async function quitarFactura() {
   setModalidadComprobante("Electronica ARCA");
   setPuntoVenta("");
   setCuitFacturacion("");
+  setRazonSocialFacturacion("");
   setCondicionIva("Consumidor final");
   setFormaPagoFactura("Efectivo");
   setFechaFactura(new Date().toISOString().split("T")[0]);
@@ -604,6 +635,7 @@ async function quitarFactura() {
     modalidad_comprobante: "",
     punto_venta: "",
     cuit_facturacion: "",
+    razon_social_facturacion: "",
     condicion_iva: "",
     forma_pago_factura: "",
     fecha_factura: "",
@@ -612,6 +644,45 @@ async function quitarFactura() {
 
   setModalFactura(false);
   cargarPedidos();
+}
+
+async function consultarPadronFacturacion(cuitBase = cuitFacturacion) {
+  const cuitLimpio = cuitBase.replace(/\D/g, "");
+
+  if (cuitLimpio.length !== 11) {
+    setMensajePadron("Ingresa un CUIT de 11 digitos para consultar ARCA.");
+    return;
+  }
+
+  setConsultandoPadron(true);
+  setMensajePadron("");
+
+  try {
+    const respuesta = await fetch("/api/arca/padron", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cuit: cuitLimpio }),
+    });
+    const data = await respuesta.json().catch(() => null);
+
+    if (!respuesta.ok || !data?.persona?.razonSocial) {
+      setMensajePadron(
+        data?.error ||
+          "No se pudo leer la razon social. Podes cargarla manualmente."
+      );
+      return;
+    }
+
+    setCuitFacturacion(data.persona.cuit || cuitLimpio);
+    setRazonSocialFacturacion(data.persona.razonSocial);
+    setMensajePadron("Razon social leida desde padron ARCA.");
+  } catch {
+    setMensajePadron(
+      "No se pudo consultar ARCA en este momento. Podes cargar la razon social manualmente."
+    );
+  } finally {
+    setConsultandoPadron(false);
+  }
 }
 
 function descargarFacturaInterna() {
@@ -629,18 +700,100 @@ function descargarFacturaInterna() {
     fecha:
       pedidoSeleccionado.fecha_factura ||
       new Date().toISOString().split("T")[0],
-    cliente: cliente?.nombre || "Cliente",
+    cliente:
+      pedidoSeleccionado.razon_social_facturacion ||
+      cliente?.nombre ||
+      "Cliente",
     telefono: cliente?.telefono || "",
     direccion: cliente?.direccion || "",
     cuitFacturacion: pedidoSeleccionado.cuit_facturacion || "",
     condicionIva: pedidoSeleccionado.condicion_iva || "",
     formaPago: pedidoSeleccionado.forma_pago_factura || "",
+    empresa: getEmpresaConfig(),
+    empresaFiscal: configFiscal || undefined,
     items: pedidoItems,
     neto: pedidoSeleccionado.importe_neto,
     iva: pedidoSeleccionado.importe_iva,
     total: pedidoSeleccionado.saldo_total,
+    cae: pedidoSeleccionado.arca_cae || "",
+    caeVencimiento: pedidoSeleccionado.arca_cae_vencimiento || "",
+    arcaEstado: pedidoSeleccionado.arca_estado || "",
     observaciones: pedidoSeleccionado.observaciones_factura || "",
   });
+}
+
+async function emitirFacturaArcaPedido() {
+  if (!pedidoSeleccionado || emitiendoArca) return;
+
+  setEmitiendoArca(true);
+
+  try {
+    const { error: guardarError } = await supabase
+      .from("pedidos")
+      .update({
+        con_factura: true,
+        tipo_comprobante: tipoComprobante || null,
+        modalidad_comprobante: modalidadComprobante || null,
+        punto_venta: puntoVenta.trim() || null,
+        cuit_facturacion: cuitFacturacion.trim() || null,
+        razon_social_facturacion: razonSocialFacturacion.trim() || null,
+        condicion_iva: condicionIva || null,
+        forma_pago_factura: formaPagoFactura || null,
+        fecha_factura: fechaFactura || null,
+        observaciones_factura: observacionesFactura.trim() || null,
+      })
+      .eq("id", pedidoSeleccionado.id);
+
+    if (guardarError) {
+      alert("No se pudieron guardar los datos fiscales antes de emitir.");
+      return;
+    }
+
+    const response = await fetch("/api/arca/emitir-factura", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        pedidoId: pedidoSeleccionado.id,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (data?.pedido) {
+        setPedidoSeleccionado(data.pedido);
+        setPedidos((actual) =>
+          actual.map((pedido) =>
+            pedido.id === data.pedido.id ? data.pedido : pedido
+          )
+        );
+      }
+
+      const detalle = data?.observaciones?.length
+        ? data.observaciones.join("\n")
+        : data?.pedido?.arca_observaciones || "";
+
+      alert(
+        [data?.error || "No se pudo emitir la factura ARCA.", detalle]
+          .filter(Boolean)
+          .join("\n")
+      );
+      return;
+    }
+
+    setPedidoSeleccionado(data.pedido);
+    setNumeroFactura(data.pedido?.numero_factura || "");
+    setModalFactura(false);
+    cargarPedidos();
+    alert("Factura ARCA emitida correctamente.");
+  } catch (error) {
+    console.error(error);
+    alert("No se pudo conectar con ARCA.");
+  } finally {
+    setEmitiendoArca(false);
+  }
 }
 
 function abrirFormaEntrega() {
@@ -2026,6 +2179,11 @@ const pedidosPaginados =
         <p className="text-zinc-500 mt-1">
           Cargar o editar el número de factura
         </p>
+        {demoMode && (
+          <p className="mt-3 bg-cyan-500/10 border border-cyan-400/20 text-cyan-300 rounded-2xl px-4 py-3 text-sm">
+            Demo visual: la emision real de ARCA esta deshabilitada.
+          </p>
+        )}
 
       </div>
 
@@ -2110,6 +2268,23 @@ const pedidosPaginados =
         <div>
 
           <label className="text-zinc-500 text-sm">
+            Razon social cliente
+          </label>
+
+          <input
+            value={razonSocialFacturacion}
+            onChange={(event) =>
+              setRazonSocialFacturacion(event.target.value)
+            }
+            placeholder="Ej: Cliente / empresa receptora"
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          />
+
+        </div>
+
+        <div>
+
+          <label className="text-zinc-500 text-sm">
             CUIT / DNI cliente
           </label>
 
@@ -2118,9 +2293,29 @@ const pedidosPaginados =
             onChange={(event) =>
               setCuitFacturacion(event.target.value)
             }
+            onBlur={(event) => {
+              const cuitLimpio = event.target.value.replace(/\D/g, "");
+              if (cuitLimpio.length === 11) {
+                consultarPadronFacturacion(event.target.value);
+              }
+            }}
             placeholder="Ej: 20-12345678-9"
             className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
           />
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-3">
+            <button
+              type="button"
+              onClick={() => consultarPadronFacturacion()}
+              disabled={consultandoPadron}
+              className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/20 text-cyan-300 rounded-2xl px-4 py-3 text-sm transition disabled:opacity-60"
+            >
+              {consultandoPadron ? "Consultando ARCA..." : "Consultar padron"}
+            </button>
+            {mensajePadron && (
+              <span className="text-zinc-500 text-sm">{mensajePadron}</span>
+            )}
+          </div>
 
         </div>
 
@@ -2163,6 +2358,46 @@ const pedidosPaginados =
 
         </div>
 
+        <div>
+
+          <label className="text-zinc-500 text-sm">
+            Forma de pago
+          </label>
+
+          <select
+            value={formaPagoFactura}
+            onChange={(event) =>
+              setFormaPagoFactura(event.target.value)
+            }
+            className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+          >
+            {formasPagoFactura.map((forma) => (
+              <option key={forma} value={forma}>
+                {forma}
+              </option>
+            ))}
+          </select>
+
+        </div>
+
+        <div className="md:col-span-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3">
+          <p className="text-zinc-500 text-sm">Estado ARCA</p>
+          <p className="text-white mt-2">
+            {pedidoSeleccionado?.arca_estado || "Pendiente de emision"}
+          </p>
+          {pedidoSeleccionado?.arca_cae && (
+            <p className="text-emerald-300 text-sm mt-2">
+              CAE {pedidoSeleccionado.arca_cae} - Vto.{" "}
+              {pedidoSeleccionado.arca_cae_vencimiento || "-"}
+            </p>
+          )}
+          {pedidoSeleccionado?.arca_observaciones && (
+            <p className="text-yellow-300 text-sm mt-2">
+              {pedidoSeleccionado.arca_observaciones}
+            </p>
+          )}
+        </div>
+
         <div className="md:col-span-2">
 
           <label className="text-zinc-500 text-sm">
@@ -2197,6 +2432,20 @@ const pedidosPaginados =
           className="bg-emerald-500 hover:bg-emerald-400 transition px-5 py-3 rounded-2xl font-medium"
         >
           Guardar factura
+        </button>
+
+        <button
+          onClick={emitirFacturaArcaPedido}
+          disabled={
+            demoMode || emitiendoArca || Boolean(pedidoSeleccionado?.arca_cae)
+          }
+          className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-3 rounded-2xl font-medium text-black disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {demoMode
+            ? "Demo visual"
+            : emitiendoArca
+              ? "Emitiendo..."
+              : "Emitir factura ARCA"}
         </button>
 
       </div>

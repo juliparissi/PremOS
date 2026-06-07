@@ -5,15 +5,51 @@ import BackButton from "@/components/BackButton";
 import { supabase } from "../../../lib/supabase";
 import { getEmpresaConfig } from "../../../lib/empresa";
 import {
+  generarPDFFacturaInterna,
   generarPDFPresupuesto,
   generarPDFRemitoEnvio,
 } from "../../../utils/generarPDF";
+
+const condicionesIva = [
+  "Consumidor final",
+  "Responsable inscripto",
+  "Responsable Monotributo",
+  "Exento",
+  "No responsable",
+  "Sujeto no categorizado",
+];
+
+const formasPagoFactura = [
+  "Efectivo",
+  "Transferencia bancaria",
+  "Tarjeta credito",
+  "Tarjeta debito",
+  "Cheque",
+  "Mercado Pago",
+  "Cuenta corriente",
+  "Otro",
+];
+
+const tiposComprobante = [
+  "Factura A",
+  "Factura B",
+  "Factura C",
+  "Nota de credito A",
+  "Nota de credito B",
+  "Nota de credito C",
+  "Nota de debito A",
+  "Nota de debito B",
+  "Nota de debito C",
+];
+
+const demoMode = process.env.NEXT_PUBLIC_PREMOS_DEMO_MODE === "true";
 
 
 export default function HistorialPedidosPage() {
 
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
+  const [configFiscal, setConfigFiscal] = useState<any>(null);
 
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
@@ -31,6 +67,20 @@ export default function HistorialPedidosPage() {
 
   const [historialPagos, setHistorialPagos] =
     useState<any[]>([]);
+  const [modalFactura, setModalFactura] = useState(false);
+  const [tipoComprobante, setTipoComprobante] = useState("Factura C");
+  const [puntoVenta, setPuntoVenta] = useState("");
+  const [razonSocialFacturacion, setRazonSocialFacturacion] = useState("");
+  const [cuitFacturacion, setCuitFacturacion] = useState("");
+  const [condicionIva, setCondicionIva] = useState("Consumidor final");
+  const [formaPagoFactura, setFormaPagoFactura] = useState("Efectivo");
+  const [fechaFactura, setFechaFactura] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [observacionesFactura, setObservacionesFactura] = useState("");
+  const [emitiendoArca, setEmitiendoArca] = useState(false);
+  const [consultandoPadron, setConsultandoPadron] = useState(false);
+  const [mensajePadron, setMensajePadron] = useState("");
 
   async function cargarPedidos() {
 
@@ -46,12 +96,24 @@ export default function HistorialPedidosPage() {
       .from("clientes")
       .select("*");
 
+    const { data: configFiscalData } = await supabase
+      .from("configuracion_fiscal")
+      .select(
+        "tipo_comprobante_default,modalidad_comprobante,punto_venta,razon_social,cuit,condicion_iva,ingresos_brutos,fecha_inicio_actividades,domicilio_fiscal"
+      )
+      .limit(1)
+      .maybeSingle();
+
     if (pedidosData) {
       setPedidos(pedidosData);
     }
 
     if (clientesData) {
       setClientes(clientesData);
+    }
+
+    if (configFiscalData) {
+      setConfigFiscal(configFiscalData);
     }
 
   }
@@ -140,6 +202,197 @@ async function obtenerEmpresaDocumento() {
     cuit: data.cuit || "",
     colorPrincipal: data.color_principal || empresaLocal.colorPrincipal,
   };
+}
+
+function abrirFacturaHistorial() {
+  const cliente = clientes.find(
+    (item) => item.id === pedidoSeleccionado?.cliente_id
+  );
+
+  setTipoComprobante(
+    pedidoSeleccionado?.tipo_comprobante ||
+      configFiscal?.tipo_comprobante_default ||
+      "Factura C"
+  );
+  setPuntoVenta(
+    pedidoSeleccionado?.punto_venta || configFiscal?.punto_venta || "0001"
+  );
+  setRazonSocialFacturacion(
+    pedidoSeleccionado?.razon_social_facturacion || cliente?.nombre || ""
+  );
+  setCuitFacturacion(pedidoSeleccionado?.cuit_facturacion || "");
+  setCondicionIva(pedidoSeleccionado?.condicion_iva || "Consumidor final");
+  setFormaPagoFactura(pedidoSeleccionado?.forma_pago_factura || "Efectivo");
+  setFechaFactura(
+    pedidoSeleccionado?.fecha_factura ||
+      new Date().toISOString().split("T")[0]
+  );
+  setObservacionesFactura(pedidoSeleccionado?.observaciones_factura || "");
+  setMensajePadron("");
+  setModalFactura(true);
+}
+
+async function consultarPadronFacturacion(cuitBase = cuitFacturacion) {
+  const cuitLimpio = cuitBase.replace(/\D/g, "");
+
+  if (cuitLimpio.length !== 11) {
+    setMensajePadron("Ingresa un CUIT de 11 digitos para consultar ARCA.");
+    return;
+  }
+
+  setConsultandoPadron(true);
+  setMensajePadron("");
+
+  try {
+    const respuesta = await fetch("/api/arca/padron", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cuit: cuitLimpio }),
+    });
+    const data = await respuesta.json().catch(() => null);
+
+    if (!respuesta.ok || !data?.persona?.razonSocial) {
+      setMensajePadron(
+        data?.error ||
+          "No se pudo leer la razon social. Podes cargarla manualmente."
+      );
+      return;
+    }
+
+    setCuitFacturacion(data.persona.cuit || cuitLimpio);
+    setRazonSocialFacturacion(data.persona.razonSocial);
+    setMensajePadron("Razon social leida desde padron ARCA.");
+  } catch {
+    setMensajePadron(
+      "No se pudo consultar ARCA en este momento. Podes cargar la razon social manualmente."
+    );
+  } finally {
+    setConsultandoPadron(false);
+  }
+}
+
+async function guardarFacturaHistorial() {
+  if (!pedidoSeleccionado) return false;
+
+  const { data, error } = await supabase
+    .from("pedidos")
+    .update({
+      con_factura: true,
+      tipo_comprobante: tipoComprobante || null,
+      modalidad_comprobante: "Electronica ARCA",
+      punto_venta: puntoVenta.trim() || null,
+      cuit_facturacion: cuitFacturacion.trim() || null,
+      razon_social_facturacion: razonSocialFacturacion.trim() || null,
+      condicion_iva: condicionIva || null,
+      forma_pago_factura: formaPagoFactura || null,
+      fecha_factura: fechaFactura || null,
+      observaciones_factura: observacionesFactura.trim() || null,
+    })
+    .eq("id", pedidoSeleccionado.id)
+    .select()
+    .single();
+
+  if (error) {
+    alert("No se pudieron guardar los datos de factura.");
+    return false;
+  }
+
+  setPedidoSeleccionado(data);
+  setPedidos((actual) =>
+    actual.map((pedido) => (pedido.id === data.id ? data : pedido))
+  );
+
+  return true;
+}
+
+async function emitirFacturaArcaHistorial() {
+  if (!pedidoSeleccionado || emitiendoArca) return;
+
+  setEmitiendoArca(true);
+
+  try {
+    const guardado = await guardarFacturaHistorial();
+    if (!guardado) return;
+
+    const response = await fetch("/api/arca/emitir-factura", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pedidoId: pedidoSeleccionado.id }),
+    });
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      if (data?.pedido) {
+        setPedidoSeleccionado(data.pedido);
+        setPedidos((actual) =>
+          actual.map((pedido) =>
+            pedido.id === data.pedido.id ? data.pedido : pedido
+          )
+        );
+      }
+
+      const detalle = Array.isArray(data?.observaciones)
+        ? data.observaciones.filter(Boolean).join(" | ")
+        : data?.pedido?.arca_observaciones || "";
+
+      alert(
+        [data?.error || "No se pudo emitir la factura ARCA.", detalle]
+          .filter(Boolean)
+          .join("\n")
+      );
+      return;
+    }
+
+    setPedidoSeleccionado(data.pedido);
+    setPedidos((actual) =>
+      actual.map((pedido) =>
+        pedido.id === data.pedido.id ? data.pedido : pedido
+      )
+    );
+    setModalFactura(false);
+    alert("Factura ARCA emitida correctamente.");
+  } catch {
+    alert("No se pudo emitir la factura ARCA.");
+  } finally {
+    setEmitiendoArca(false);
+  }
+}
+
+async function descargarFacturaHistorial() {
+  if (!pedidoSeleccionado) return;
+
+  const cliente = clientes.find(
+    (item) => item.id === pedidoSeleccionado.cliente_id
+  );
+
+  generarPDFFacturaInterna({
+    numeroPedido: pedidoSeleccionado.numero,
+    numeroFactura: pedidoSeleccionado.numero_factura || "",
+    tipoComprobante: pedidoSeleccionado.tipo_comprobante || tipoComprobante,
+    puntoVenta: pedidoSeleccionado.punto_venta || puntoVenta,
+    fecha:
+      pedidoSeleccionado.fecha_factura ||
+      new Date().toISOString().split("T")[0],
+    cliente:
+      pedidoSeleccionado.razon_social_facturacion ||
+      cliente?.nombre ||
+      "Cliente",
+    telefono: cliente?.telefono || "",
+    direccion: cliente?.direccion || "",
+    cuitFacturacion: pedidoSeleccionado.cuit_facturacion || "",
+    condicionIva: pedidoSeleccionado.condicion_iva || "",
+    formaPago: pedidoSeleccionado.forma_pago_factura || "",
+    empresa: await obtenerEmpresaDocumento(),
+    empresaFiscal: configFiscal || undefined,
+    items: pedidoItems,
+    neto: pedidoSeleccionado.importe_neto,
+    iva: pedidoSeleccionado.importe_iva,
+    total: pedidoSeleccionado.saldo_total,
+    cae: pedidoSeleccionado.arca_cae || "",
+    caeVencimiento: pedidoSeleccionado.arca_cae_vencimiento || "",
+    arcaEstado: pedidoSeleccionado.arca_estado || "",
+    observaciones: pedidoSeleccionado.observaciones_factura || "",
+  });
 }
 
 async function cargarPresupuestoOriginal(
@@ -529,6 +782,22 @@ const pedidosPaginados =
   Descargar nota venta
 </button>
 
+<button
+  onClick={abrirFacturaHistorial}
+  className="bg-white/5 hover:bg-white/10 transition px-4 py-2 rounded-xl border border-white/5 text-sm"
+>
+  Factura
+</button>
+
+{pedidoSeleccionado?.con_factura && (
+  <button
+    onClick={descargarFacturaHistorial}
+    className="bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-black transition px-4 py-2 rounded-xl border border-emerald-500/20 text-sm"
+  >
+    Descargar factura
+  </button>
+)}
+
 {pedidoSeleccionado?.forma_entrega === "Envio" && (
   <button
     onClick={async () => {
@@ -680,6 +949,219 @@ const pedidosPaginados =
 
         </div>
 
+      )}
+
+      {modalFactura && pedidoSeleccionado && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-6 overflow-y-auto">
+          <div className="bg-[#0b1727] border border-white/10 rounded-3xl w-full max-w-4xl p-8 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setModalFactura(false)}
+              className="absolute top-6 right-6 text-zinc-400 hover:text-white transition text-3xl"
+            >
+              ×
+            </button>
+
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold">Factura del pedido</h2>
+              <p className="text-zinc-500 mt-1">
+                Emitir o descargar factura para un pedido entregado.
+              </p>
+              {demoMode && (
+                <p className="mt-3 bg-cyan-500/10 border border-cyan-400/20 text-cyan-300 rounded-2xl px-4 py-3 text-sm">
+                  Demo visual: la emision real de ARCA esta deshabilitada.
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="text-zinc-500 text-sm">
+                  Tipo de comprobante
+                </label>
+                <select
+                  value={tipoComprobante}
+                  onChange={(event) => setTipoComprobante(event.target.value)}
+                  className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+                >
+                  {tiposComprobante.map((tipo) => (
+                    <option key={tipo} value={tipo}>
+                      {tipo}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-zinc-500 text-sm">
+                  Punto de venta
+                </label>
+                <input
+                  value={puntoVenta}
+                  onChange={(event) => setPuntoVenta(event.target.value)}
+                  placeholder="Ej: 0001"
+                  className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-500 text-sm">
+                  Razon social cliente
+                </label>
+                <input
+                  value={razonSocialFacturacion}
+                  onChange={(event) =>
+                    setRazonSocialFacturacion(event.target.value)
+                  }
+                  placeholder="Ej: Cliente / empresa receptora"
+                  className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-500 text-sm">
+                  CUIT / DNI cliente
+                </label>
+                <input
+                  value={cuitFacturacion}
+                  onChange={(event) => setCuitFacturacion(event.target.value)}
+                  onBlur={(event) => {
+                    const cuitLimpio = event.target.value.replace(/\D/g, "");
+                    if (cuitLimpio.length === 11) {
+                      consultarPadronFacturacion(event.target.value);
+                    }
+                  }}
+                  placeholder="Ej: 20-12345678-9"
+                  className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+                />
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => consultarPadronFacturacion()}
+                    disabled={consultandoPadron}
+                    className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/20 text-cyan-300 rounded-2xl px-4 py-3 text-sm transition disabled:opacity-60"
+                  >
+                    {consultandoPadron
+                      ? "Consultando ARCA..."
+                      : "Consultar padron"}
+                  </button>
+                  {mensajePadron && (
+                    <span className="text-zinc-500 text-sm">
+                      {mensajePadron}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-zinc-500 text-sm">
+                  Condicion IVA
+                </label>
+                <select
+                  value={condicionIva}
+                  onChange={(event) => setCondicionIva(event.target.value)}
+                  className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+                >
+                  {condicionesIva.map((condicion) => (
+                    <option key={condicion} value={condicion}>
+                      {condicion}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-zinc-500 text-sm">
+                  Fecha del comprobante
+                </label>
+                <input
+                  type="date"
+                  value={fechaFactura}
+                  onChange={(event) => setFechaFactura(event.target.value)}
+                  className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-500 text-sm">
+                  Forma de pago
+                </label>
+                <select
+                  value={formaPagoFactura}
+                  onChange={(event) =>
+                    setFormaPagoFactura(event.target.value)
+                  }
+                  className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition"
+                >
+                  {formasPagoFactura.map((forma) => (
+                    <option key={forma} value={forma}>
+                      {forma}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-[#07111f] border border-white/5 rounded-2xl p-4">
+                <p className="text-zinc-500 text-sm">Estado ARCA</p>
+                <p className="text-white font-semibold mt-2">
+                  {pedidoSeleccionado.arca_estado || "Pendiente de emision"}
+                </p>
+                {pedidoSeleccionado.arca_cae && (
+                  <p className="text-zinc-500 text-sm mt-2">
+                    CAE {pedidoSeleccionado.arca_cae} - Vto.{" "}
+                    {pedidoSeleccionado.arca_cae_vencimiento || "-"}
+                  </p>
+                )}
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-zinc-500 text-sm">
+                  Observaciones fiscales
+                </label>
+                <textarea
+                  value={observacionesFactura}
+                  onChange={(event) =>
+                    setObservacionesFactura(event.target.value)
+                  }
+                  rows={4}
+                  placeholder="Datos adicionales o aclaraciones"
+                  className="w-full mt-2 bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500 transition resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+              <button
+                onClick={guardarFacturaHistorial}
+                className="bg-white/5 hover:bg-white/10 transition px-5 py-4 rounded-2xl border border-white/5"
+              >
+                Guardar datos
+              </button>
+              <button
+                onClick={descargarFacturaHistorial}
+                disabled={!pedidoSeleccionado.con_factura}
+                className="bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-black transition px-5 py-4 rounded-2xl border border-emerald-500/20 disabled:opacity-40"
+              >
+                Descargar factura
+              </button>
+              <button
+                onClick={emitirFacturaArcaHistorial}
+                disabled={
+                  demoMode ||
+                  emitiendoArca ||
+                  Boolean(pedidoSeleccionado.arca_cae)
+                }
+                className="bg-cyan-500 hover:bg-cyan-400 transition px-5 py-4 rounded-2xl font-medium text-black disabled:opacity-50"
+              >
+                {demoMode
+                  ? "Demo visual"
+                  : emitiendoArca
+                    ? "Emitiendo..."
+                    : "Emitir factura ARCA"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
