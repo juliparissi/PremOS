@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import BackButton from "@/components/BackButton";
 import { supabase } from "../../../lib/supabase";
+import { sincronizarCompraDesdeMovimiento } from "@/lib/sincronizarCompras";
 
 export default function HistorialMovimientosPage() {
 
@@ -106,6 +107,11 @@ export default function HistorialMovimientosPage() {
         saldo_pendiente: nuevoPendiente,
       })
       .eq("id", movimientoSeleccionado.id);
+
+    await sincronizarCompraDesdeMovimiento(
+      movimientoSeleccionado,
+      nuevoAbonado
+    );
 
     await supabase
       .from("movimientos_economia_abonos")

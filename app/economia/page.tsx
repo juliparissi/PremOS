@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
+import { sincronizarCompraDesdeMovimiento } from "@/lib/sincronizarCompras";
 
 type Proveedor = {
   id: string;
@@ -183,17 +184,20 @@ export default function EconomiaPage() {
       })
       .eq("id", movimientoSeleccionado.id);
 
-      await supabase
-  .from("movimientos_economia_abonos")
-  .insert([
-    {
-      movimiento_id: movimientoSeleccionado.id,
+    await sincronizarCompraDesdeMovimiento(
+      movimientoSeleccionado,
+      nuevoAbonado
+    );
 
-      monto,
-
-      fecha: fechaAbono,
-    },
-  ]);
+    await supabase
+      .from("movimientos_economia_abonos")
+      .insert([
+        {
+          movimiento_id: movimientoSeleccionado.id,
+          monto,
+          fecha: fechaAbono,
+        },
+      ]);
 
     setModalAbono(false);
 

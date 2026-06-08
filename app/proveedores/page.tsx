@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import BackButton from "@/components/BackButton";
 import { supabase } from "../../lib/supabase";
+import { sincronizarComprasPendientesConEconomia } from "@/lib/sincronizarCompras";
 
 type Proveedor = {
   id: string;
@@ -78,6 +79,14 @@ export default function ProveedoresPage() {
   }
 
   async function cargarCompras() {
+    const comprasSincronizadas =
+      await sincronizarComprasPendientesConEconomia();
+
+    if (comprasSincronizadas) {
+      setCompras(comprasSincronizadas as CompraProveedor[]);
+      return;
+    }
+
     const { data } = await supabase
       .from("movimientos_suministro")
       .select(
