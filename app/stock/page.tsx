@@ -4,7 +4,23 @@ import BackButton from "@/components/BackButton";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
-const unidadesStock = ["Und", "m2", "Bidon 5L"];
+const unidadesStock = [
+  "Und",
+  "m2",
+  "kg",
+  "grs",
+  "L",
+  "ml",
+  "m3",
+  "metro lineal",
+  "Bolsa",
+  "Caja",
+  "Paquete",
+  "Pallet",
+  "Bidon 5L",
+  "Bidon 10L",
+  "Bidon 20L",
+];
 
 export default function StockPage() {
 
@@ -557,7 +573,8 @@ useEffect(() => {
               Unidad
             </label>
 
-            <select
+            <input
+              list="unidades-stock"
               value={unidadStock}
               onChange={(e) =>
                 setUnidadStock(
@@ -565,7 +582,8 @@ useEffect(() => {
                 )
               }
               className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 text-white"
-            >
+            />
+            <datalist id="unidades-stock">
 
               {unidadesStock.map((unidad) => (
 
@@ -578,7 +596,7 @@ useEffect(() => {
 
               ))}
 
-            </select>
+            </datalist>
 
           </div>
 

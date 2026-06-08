@@ -9,7 +9,23 @@ import {
 } from "../../lib/planes";
 import { supabase } from "../../lib/supabase";
 
-const unidadesProducto = ["Und", "m2", "Bidon 5L"];
+const unidadesProducto = [
+  "Und",
+  "m2",
+  "kg",
+  "grs",
+  "L",
+  "ml",
+  "m3",
+  "metro lineal",
+  "Bolsa",
+  "Caja",
+  "Paquete",
+  "Pallet",
+  "Bidon 5L",
+  "Bidon 10L",
+  "Bidon 20L",
+];
 
 export default function ProductosPage() {
 
@@ -278,18 +294,20 @@ export default function ProductosPage() {
                 className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
               />
 
-              <select
+              <input
+                list="unidades-producto"
+                placeholder="Unidad"
                 value={unidad}
                 onChange={(e) => setUnidad(e.target.value)}
                 className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
-              >
-                <option value="">Unidad</option>
+              />
+              <datalist id="unidades-producto">
                 {unidadesProducto.map((item) => (
                   <option key={item} value={item}>
                     {item}
                   </option>
                 ))}
-              </select>
+              </datalist>
 
               <input
                 placeholder="Stock"
@@ -381,21 +399,20 @@ export default function ProductosPage() {
                 className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
               />
 
-              <select
+              <input
+                list="unidades-producto-editar"
+                placeholder="Unidad"
                 value={unidad}
                 onChange={(e) => setUnidad(e.target.value)}
                 className="w-full bg-[#07111f] border border-white/5 rounded-2xl px-4 py-3 outline-none"
-              >
-                <option value="">Unidad</option>
-                {unidad && !unidadesProducto.includes(unidad) && (
-                  <option value={unidad}>{unidad}</option>
-                )}
+              />
+              <datalist id="unidades-producto-editar">
                 {unidadesProducto.map((item) => (
                   <option key={item} value={item}>
                     {item}
                   </option>
                 ))}
-              </select>
+              </datalist>
 
               <input
                 value={cantidad}
