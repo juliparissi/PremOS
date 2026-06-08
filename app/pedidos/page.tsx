@@ -516,10 +516,7 @@ function abrirFactura() {
     pedidoSeleccionado?.cuit_facturacion || ""
   );
   setRazonSocialFacturacion(
-    pedidoSeleccionado?.razon_social_facturacion ||
-      clientes.find((item) => item.id === pedidoSeleccionado?.cliente_id)
-        ?.nombre ||
-      ""
+    pedidoSeleccionado?.razon_social_facturacion || ""
   );
   setCondicionIva(
     pedidoSeleccionado?.condicion_iva || "Consumidor final"
@@ -2285,7 +2282,7 @@ const pedidosPaginados =
         <div>
 
           <label className="text-zinc-500 text-sm">
-            CUIT / DNI cliente
+            CUIT cliente
           </label>
 
           <input

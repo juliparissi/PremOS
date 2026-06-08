@@ -233,9 +233,6 @@ export default function ConfiguracionPage() {
                 </div>
               )}
 
-              <p className="text-zinc-500 text-sm mt-4">
-                Lite habilita gestion basica comercial. Full suma produccion, stock, suministros, reportes, listas de precios y nomina. Pro suma el asistente IA con hasta 300 consultas mensuales.
-              </p>
             </div>
 
             <div className="bg-[#0b1727] border border-white/5 rounded-3xl p-6">

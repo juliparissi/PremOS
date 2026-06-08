@@ -1090,7 +1090,7 @@ export default function VentasPage() {
 
                 <div>
                   <label className="text-sm text-zinc-400 block mb-2">
-                    CUIT / DNI cliente
+                    CUIT cliente
                   </label>
                   <input
                     value={cuitFacturacion}

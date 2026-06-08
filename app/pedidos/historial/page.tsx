@@ -205,10 +205,6 @@ async function obtenerEmpresaDocumento() {
 }
 
 function abrirFacturaHistorial() {
-  const cliente = clientes.find(
-    (item) => item.id === pedidoSeleccionado?.cliente_id
-  );
-
   setTipoComprobante(
     pedidoSeleccionado?.tipo_comprobante ||
       configFiscal?.tipo_comprobante_default ||
@@ -218,7 +214,7 @@ function abrirFacturaHistorial() {
     pedidoSeleccionado?.punto_venta || configFiscal?.punto_venta || "0001"
   );
   setRazonSocialFacturacion(
-    pedidoSeleccionado?.razon_social_facturacion || cliente?.nombre || ""
+    pedidoSeleccionado?.razon_social_facturacion || ""
   );
   setCuitFacturacion(pedidoSeleccionado?.cuit_facturacion || "");
   setCondicionIva(pedidoSeleccionado?.condicion_iva || "Consumidor final");
@@ -1019,7 +1015,7 @@ const pedidosPaginados =
 
               <div>
                 <label className="text-zinc-500 text-sm">
-                  CUIT / DNI cliente
+                  CUIT cliente
                 </label>
                 <input
                   value={cuitFacturacion}
