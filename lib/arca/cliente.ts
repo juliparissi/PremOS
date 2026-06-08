@@ -285,12 +285,14 @@ export async function consultarPersonaPadronArca(
 ): Promise<PersonaPadronResult> {
   const config = getArcaConfig();
   const cuitLimpio = cuitPersona.replace(/\D/g, "");
+  const padronService =
+    process.env.ARCA_PADRON_SERVICE || "ws_sr_constancia_inscripcion";
 
   if (!/^\d{11}$/.test(cuitLimpio)) {
     throw new Error("El CUIT debe tener 11 digitos.");
   }
 
-  const auth = await obtenerAuthArca("ws_sr_padron_a5");
+  const auth = await obtenerAuthArca(padronService);
   const envelope = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a5="http://a5.soap.ws.server.puc.sr/">
   <soapenv:Header/>
